@@ -47,7 +47,12 @@ export const buildScriptNotes = (
   roast?: RoastCritique,
   compare?: CompareHooksResponse,
 ): string => {
-  const modeLabel = request.mode === 'roast' ? 'Roast' : request.mode === 'compare' ? 'Compare' : 'Generate';
+  const modeLabel =
+    request.mode === 'roast'
+      ? 'Roast'
+      : request.mode === 'compare'
+        ? 'Compare'
+        : 'Generate';
 
   let roastBlock = '';
 
@@ -88,7 +93,10 @@ Mode: ${modeLabel}
 Script: ${request.script.slice(0, 100)}${request.script.length > 100 ? '...' : ''}
 Platform: ${request.platform} | Hook Window: ${request.hookWindow}s | Tone: ${request.tone} | Audience: ${request.audience}
 Generated: ${new Date().toLocaleString()}
-${roastBlock}${compareBlock}${compare ? '' : `━━━━━━━━━━━━━━━━━━━━━━━━━━
+${roastBlock}${compareBlock}${
+    compare
+      ? ''
+      : `━━━━━━━━━━━━━━━━━━━━━━━━━━
 ⭐ BEST PICK
 [${hooks.find((h) => h.best_pick)?.framework ?? hooks[0]?.framework ?? 'BEST PICK'}]
 ${hooks.find((h) => h.best_pick)?.text ?? hooks[0]?.text ?? ''}
@@ -96,7 +104,8 @@ Why: ${hooks.find((h) => h.best_pick)?.why ?? hooks[0]?.why ?? ''}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━
 ALL HOOKS
-${hooks.map((hook, index) => `${index + 1}. [${hook.framework}] ${hook.text}`).join('\n')}`}
+${hooks.map((hook, index) => `${index + 1}. [${hook.framework}] ${hook.text}`).join('\n')}`
+  }
 `;
 };
 

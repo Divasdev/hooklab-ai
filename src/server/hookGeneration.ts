@@ -16,7 +16,6 @@ import {
   type GenerateHooksResponse,
   type HookFramework,
   type HookLanguage,
-
   type HookResult,
   type HookScores,
   type HookTimecode,
@@ -896,9 +895,11 @@ const callGemini = async (
         errPayload &&
         typeof errPayload.error === 'object' &&
         errPayload.error !== null &&
-        typeof (errPayload.error as Record<string, unknown>).message === 'string'
+        typeof (errPayload.error as Record<string, unknown>).message ===
+          'string'
       ) {
-        errMsg = (errPayload.error as Record<string, unknown>).message as string;
+        errMsg = (errPayload.error as Record<string, unknown>)
+          .message as string;
       }
     } catch {
       // ignore
@@ -978,8 +979,19 @@ export const createGenerateHooksResponse = async ({
             ? parseRoastPayload(text, hookWindowTimecodes[request.hookWindow])
             : null;
 
-          if (parsedRoast && isGenerationGrounded(request, { mode: 'roast', hooks: parsedRoast.hooks, roast: parsedRoast.roast })) {
-            generatedHooks = { mode: 'roast', hooks: parsedRoast.hooks, roast: parsedRoast.roast };
+          if (
+            parsedRoast &&
+            isGenerationGrounded(request, {
+              mode: 'roast',
+              hooks: parsedRoast.hooks,
+              roast: parsedRoast.roast,
+            })
+          ) {
+            generatedHooks = {
+              mode: 'roast',
+              hooks: parsedRoast.hooks,
+              roast: parsedRoast.roast,
+            };
             break;
           }
         } catch (err) {
@@ -1005,7 +1017,13 @@ export const createGenerateHooksResponse = async ({
             ? parseHooksPayload(text, hookWindowTimecodes[request.hookWindow])
             : null;
 
-          if (parsedHooks && isGenerationGrounded(request, { mode: 'generate', hooks: parsedHooks.hooks })) {
+          if (
+            parsedHooks &&
+            isGenerationGrounded(request, {
+              mode: 'generate',
+              hooks: parsedHooks.hooks,
+            })
+          ) {
             generatedHooks = { mode: 'generate', hooks: parsedHooks.hooks };
             break;
           }
@@ -1027,12 +1045,19 @@ export const createGenerateHooksResponse = async ({
         if (geminiError.status === 429) {
           return {
             status: 429,
-            payload: { error: 'Gemini API rate limit exceeded. Please wait a minute and try again.' },
+            payload: {
+              error:
+                'Gemini API rate limit exceeded. Please wait a minute and try again.',
+            },
           };
         }
         return {
           status: geminiError.status === 400 ? 400 : 502,
-          payload: { error: geminiError.message || 'Something went wrong on our end. Try again.' },
+          payload: {
+            error:
+              geminiError.message ||
+              'Something went wrong on our end. Try again.',
+          },
         };
       }
       return {
@@ -1096,12 +1121,17 @@ export const createRewriteHookResponse = async ({
       if (err.status === 429) {
         return {
           status: 429,
-          payload: { error: 'Gemini API rate limit exceeded. Please wait a minute and try again.' },
+          payload: {
+            error:
+              'Gemini API rate limit exceeded. Please wait a minute and try again.',
+          },
         };
       }
       return {
         status: err.status === 400 ? 400 : 502,
-        payload: { error: err.message || 'Something went wrong on our end. Try again.' },
+        payload: {
+          error: err.message || 'Something went wrong on our end. Try again.',
+        },
       };
     }
     return {

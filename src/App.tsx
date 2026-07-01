@@ -4,8 +4,6 @@ import { useMemo, useState } from 'react';
 import { ComparisonSection } from './components/ComparisonSection';
 import { CompareCard } from './components/CompareCard';
 import { ControlsPanel } from './components/ControlsPanel';
-import { EmptyState } from './components/EmptyState';
-import { type ExampleScript } from './components/ExampleScripts';
 import { ExportBar } from './components/ExportBar';
 import { HistoryDrawer } from './components/HistoryDrawer';
 import { HookCard } from './components/HookCard';
@@ -52,7 +50,8 @@ function App() {
   const [hookB, setHookB] = useState('');
   const [hooks, setHooks] = useState<HookResult[]>([]);
   const [roast, setRoast] = useState<RoastCritique | null>(null);
-  const [compareResult, setCompareResult] = useState<CompareHooksResponse | null>(null);
+  const [compareResult, setCompareResult] =
+    useState<CompareHooksResponse | null>(null);
   const [roastOriginalHook, setRoastOriginalHook] = useState('');
   const [previousHooks, setPreviousHooks] = useState<
     Partial<Record<HookResult['framework'], HookResult>>
@@ -73,9 +72,11 @@ function App() {
   const canSubmit = useMemo(() => {
     if (isLoading) return false;
 
-    const isHookAValid = script.trim().length >= minLength && script.trim().length <= 3000;
+    const isHookAValid =
+      script.trim().length >= minLength && script.trim().length <= 3000;
     if (mode === 'compare') {
-      const isHookBValid = hookB.trim().length >= minLength && hookB.trim().length <= 3000;
+      const isHookBValid =
+        hookB.trim().length >= minLength && hookB.trim().length <= 3000;
       return isHookAValid && isHookBValid;
     }
     return isHookAValid;
@@ -255,17 +256,6 @@ function App() {
     setInputError(null);
     setSurfaceError(null);
     setPreviousHooks({});
-  };
-
-  const selectExample = (example: ExampleScript): void => {
-    setScript(example.script);
-    setTone(example.defaults.tone);
-    setAudience(example.defaults.audience);
-    setIntensity(example.defaults.intensity);
-    setLanguage(example.defaults.language);
-    setHookWindow(example.defaults.hookWindow);
-    setMode('generate');
-    setInputError(null);
   };
 
   const selectTemplate = (template: ScriptTemplate): void => {
@@ -469,7 +459,18 @@ function App() {
                 ) : null}
               </>
             ) : (
-              <EmptyState onSelectExample={selectExample} />
+              <div className="flex flex-col items-center justify-center h-64 text-center">
+                <div className="w-16 h-16 bg-gradient-to-tr from-rose-500/10 to-orange-500/10 rounded-2xl flex items-center justify-center mb-4">
+                  <Scissors className="w-8 h-8 text-rose-500" />
+                </div>
+                <h3 className="text-xl font-bold text-slate-100 mb-2">
+                  Ready to cut
+                </h3>
+                <p className="text-slate-400 max-w-md">
+                  Paste your script on the left or choose a template to start
+                  generating high-retention hooks.
+                </p>
+              </div>
             )}
           </section>
         </section>
