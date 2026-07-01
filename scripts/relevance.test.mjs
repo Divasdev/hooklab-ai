@@ -13,6 +13,8 @@ const aviationRequest = {
   audience: 'Beginners',
   intensity: 'Safe',
   language: 'English',
+  hookWindow: 5,
+  mode: 'generate',
 };
 
 const frameworks = [
@@ -77,6 +79,30 @@ assert.equal(
     ),
   ),
   false,
+);
+
+const compareResponse = {
+  mode: 'compare',
+  compare: {
+    winner: 'A',
+    confidence: 90,
+    summary: 'Test summary',
+    analysis: {
+      clarity: { winner: 'A', reason: 'Test' },
+      curiosity: { winner: 'A', reason: 'Test' },
+      emotion: { winner: 'A', reason: 'Test' },
+      retention: { winner: 'A', reason: 'Test' },
+    },
+    improvedHook: 'Test hook',
+  },
+};
+
+assert.equal(
+  isGenerationGrounded(
+    { ...aviationRequest, mode: 'compare', hookB: 'Test hook B' },
+    compareResponse,
+  ),
+  true,
 );
 
 console.log('relevance tests passed');
