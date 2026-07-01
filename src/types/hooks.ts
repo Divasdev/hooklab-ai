@@ -28,6 +28,21 @@ export const languages = ['English', 'Hinglish', 'Hindi'] as const;
 
 export type HookLanguage = (typeof languages)[number];
 
+export const hookWindows = [5, 8] as const;
+
+export type HookWindow = (typeof hookWindows)[number];
+
+export const modes = ['generate', 'roast', 'compare'] as const;
+
+export type Mode = (typeof modes)[number];
+
+export type HookTimecode = '00:00–00:05' | '00:00–00:08';
+
+export const hookWindowTimecodes: Record<HookWindow, HookTimecode> = {
+  5: '00:00–00:05',
+  8: '00:00–00:08',
+};
+
 export const hookFrameworks = [
   'CURIOSITY GAP',
   'BOLD CLAIM',
@@ -64,29 +79,68 @@ export interface HookResult {
   framework: HookFramework;
   text: string;
   why: string;
-  timecode: '00:00–00:05';
+  timecode: HookTimecode;
   scores: HookScores;
   best_pick: boolean;
 }
 
+export interface RoastCritique {
+  grade: string;
+  bullets: string[];
+  biggest_fix: string;
+}
+
 export interface GenerateHooksRequest {
   script: string;
+  hookB?: string;
   platform: Platform;
   tone: Tone;
   audience: Audience;
   intensity: Intensity;
   language: HookLanguage;
+  hookWindow: HookWindow;
+  mode: Mode;
 }
 
-export interface GenerateHooksResponse {
-  hooks: HookResult[];
+export interface CompareAnalysis {
+  winner: 'A' | 'B';
+  reason: string;
 }
+
+export interface CompareHooksResponse {
+  winner: 'A' | 'B';
+  confidence: number;
+  summary: string;
+  analysis: {
+    clarity: CompareAnalysis;
+    curiosity: CompareAnalysis;
+    emotion: CompareAnalysis;
+    retention: CompareAnalysis;
+  };
+  improvedHook: string;
+}
+
+export type GenerateHooksResponse =
+  | {
+      mode: 'generate';
+      hooks: HookResult[];
+    }
+  | {
+      mode: 'roast';
+      hooks: HookResult[];
+      roast: RoastCritique;
+    }
+  | {
+      mode: 'compare';
+      compare: CompareHooksResponse;
+    };
 
 export interface RewriteHookRequest {
   hook: string;
   framework: HookFramework;
   direction: RewriteDirection;
   platform: Platform;
+  hookWindow: HookWindow;
 }
 
 export interface RewriteHookResponse {
@@ -98,5 +152,7 @@ export interface RewriteHookResponse {
 export interface HistoryEntry extends GenerateHooksRequest {
   id: string;
   timestamp: number;
-  hooks: HookResult[];
+  hooks?: HookResult[];
+  roast?: RoastCritique;
+  compare?: CompareHooksResponse;
 }
