@@ -116,14 +116,15 @@ const sourceAllowsCreatorTerms = (script: string): boolean => {
 const extractNumericClaims = (text: string): Set<string> =>
   new Set((normalize(text).match(numericClaimPattern) ?? []).map(normalize));
 
-const intrinsicHookClaims = new Set(['5', 'five']);
-
 const hasUnsupportedNumericClaim = (
-  script: string,
+  request: GenerateHooksRequest,
   hookText: string,
 ): boolean => {
-  const sourceClaims = extractNumericClaims(script);
+  const sourceClaims = extractNumericClaims(request.script);
   const hookClaims = extractNumericClaims(hookText);
+  const intrinsicHookClaims = new Set(
+    request.hookWindow === 8 ? ['8', 'eight'] : ['5', 'five'],
+  );
 
   for (const claim of hookClaims) {
     if (intrinsicHookClaims.has(claim)) {
@@ -143,6 +144,10 @@ export const isGenerationGrounded = (
   response: GenerateHooksResponse,
 ): boolean => {
   if (request.language === 'Hindi') {
+    return true;
+  }
+
+  if (response.mode === 'compare') {
     return true;
   }
 
@@ -171,7 +176,7 @@ export const isGenerationGrounded = (
       return false;
     }
 
-    if (hasUnsupportedNumericClaim(request.script, hookText)) {
+    if (hasUnsupportedNumericClaim(request, hookText)) {
       return false;
     }
 
