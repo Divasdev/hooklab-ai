@@ -1,10 +1,12 @@
 import {
   audiences,
+  hookWindows,
   intensities,
   languages,
   tones,
   type Audience,
   type HookLanguage,
+  type HookWindow,
   type Intensity,
   type Tone,
 } from '../types/hooks';
@@ -14,26 +16,30 @@ interface ControlsPanelProps {
   audience: Audience;
   intensity: Intensity;
   language: HookLanguage;
+  hookWindow: HookWindow;
   disabled?: boolean;
   onToneChange: (tone: Tone) => void;
   onAudienceChange: (audience: Audience) => void;
   onIntensityChange: (intensity: Intensity) => void;
   onLanguageChange: (language: HookLanguage) => void;
+  onHookWindowChange: (hookWindow: HookWindow) => void;
 }
 
-interface SegmentGroupProps<TValue extends string> {
+interface SegmentGroupProps<TValue extends string | number> {
   label: string;
   values: readonly TValue[];
   selectedValue: TValue;
   disabled?: boolean;
+  formatValue?: (value: TValue) => string;
   onChange: (value: TValue) => void;
 }
 
-function SegmentGroup<TValue extends string>({
+function SegmentGroup<TValue extends string | number>({
   label,
   values,
   selectedValue,
   disabled = false,
+  formatValue,
   onChange,
 }: SegmentGroupProps<TValue>) {
   return (
@@ -57,7 +63,7 @@ function SegmentGroup<TValue extends string>({
                   : 'text-muted hover:bg-white/5 hover:text-cyan'
               }`}
             >
-              {value}
+              {formatValue ? formatValue(value) : value}
             </button>
           );
         })}
@@ -71,11 +77,13 @@ export function ControlsPanel({
   audience,
   intensity,
   language,
+  hookWindow,
   disabled = false,
   onToneChange,
   onAudienceChange,
   onIntensityChange,
   onLanguageChange,
+  onHookWindowChange,
 }: ControlsPanelProps) {
   return (
     <section className="grid gap-3 rounded-md border border-white/10 bg-surface/70 p-3 sm:grid-cols-2">
@@ -106,6 +114,14 @@ export function ControlsPanel({
         selectedValue={language}
         disabled={disabled}
         onChange={onLanguageChange}
+      />
+      <SegmentGroup
+        label="Hook Window"
+        values={hookWindows}
+        selectedValue={hookWindow}
+        disabled={disabled}
+        formatValue={(value) => `${value} sec`}
+        onChange={onHookWindowChange}
       />
     </section>
   );
