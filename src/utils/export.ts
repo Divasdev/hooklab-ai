@@ -1,4 +1,9 @@
-import type { GenerateHooksRequest, HookResult } from '../types/hooks';
+import type {
+  GenerateHooksRequest,
+  HookResult,
+  RoastCritique,
+  CompareHooksResponse,
+} from '../types/hooks';
 
 const csvEscape = (value: string | number): string =>
   `"${String(value).replace(/"/g, '""')}"`;
@@ -39,26 +44,59 @@ export const buildHooksCsv = (hooks: HookResult[]): string => {
 export const buildScriptNotes = (
   request: GenerateHooksRequest,
   hooks: HookResult[],
+  roast?: RoastCritique,
+  compare?: CompareHooksResponse,
 ): string => {
-  const bestPick = hooks.find((hook) => hook.best_pick) ?? hooks[0];
-  const allHooks = hooks
-    .map((hook, index) => `${index + 1}. [${hook.framework}] ${hook.text}`)
-    .join('\n');
+  const modeLabel = request.mode === 'roast' ? 'Roast' : request.mode === 'compare' ? 'Compare' : 'Generate';
 
-  return `HOOK LAB EXPORT
-Script: ${request.script.slice(0, 100)}${request.script.length > 100 ? '...' : ''}
-Platform: ${request.platform} | Tone: ${request.tone} | Audience: ${request.audience}
-Generated: ${new Date().toLocaleString()}
+  let roastBlock = '';
+
+  if (roast) {
+    roastBlock = `
+━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔥 ROAST
+Grade: ${roast.grade}
+${roast.bullets.map((bullet) => `✕ ${bullet}`).join('\n')}
+Biggest Fix: ${roast.biggest_fix}
+`;
+  }
+
+  let compareBlock = '';
+  if (compare) {
+    compareBlock = `
+━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚖️ A/B TEST RESULTS
+Winner: Hook ${compare.winner}
+Confidence: ${compare.confidence}%
+
+Summary: ${compare.summary}
+
+Metric Breakdown:
+- Clarity: Winner ${compare.analysis.clarity.winner} (${compare.analysis.clarity.reason})
+- Curiosity: Winner ${compare.analysis.curiosity.winner} (${compare.analysis.curiosity.reason})
+- Emotion: Winner ${compare.analysis.emotion.winner} (${compare.analysis.emotion.reason})
+- Retention: Winner ${compare.analysis.retention.winner} (${compare.analysis.retention.reason})
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━
+⭐ IMPROVED FINAL HOOK
+${compare.improvedHook}
+`;
+  }
+
+  return `HOOK LAB EXPORT
+Mode: ${modeLabel}
+Script: ${request.script.slice(0, 100)}${request.script.length > 100 ? '...' : ''}
+Platform: ${request.platform} | Hook Window: ${request.hookWindow}s | Tone: ${request.tone} | Audience: ${request.audience}
+Generated: ${new Date().toLocaleString()}
+${roastBlock}${compareBlock}${compare ? '' : `━━━━━━━━━━━━━━━━━━━━━━━━━━
 ⭐ BEST PICK
-[${bestPick?.framework ?? 'BEST PICK'}]
-${bestPick?.text ?? ''}
-Why: ${bestPick?.why ?? ''}
+[${hooks.find((h) => h.best_pick)?.framework ?? hooks[0]?.framework ?? 'BEST PICK'}]
+${hooks.find((h) => h.best_pick)?.text ?? hooks[0]?.text ?? ''}
+Why: ${hooks.find((h) => h.best_pick)?.why ?? hooks[0]?.why ?? ''}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━
 ALL HOOKS
-${allHooks}
+${hooks.map((hook, index) => `${index + 1}. [${hook.framework}] ${hook.text}`).join('\n')}`}
 `;
 };
 
