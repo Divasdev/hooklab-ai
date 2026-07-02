@@ -47,13 +47,13 @@ interface RateLimitBucket {
 }
 
 export interface GenerateHooksHandlerOptions {
-  apiKey?: string;
+  apiKeys: string[];
   body: unknown;
   ip?: string;
 }
 
 export interface RewriteHookHandlerOptions {
-  apiKey?: string;
+  apiKeys: string[];
   body: unknown;
   ip?: string;
 }
@@ -911,8 +911,44 @@ const callGemini = async (
   return extractGeminiText(payload);
 };
 
+class AllKeysExhaustedError extends Error {
+  constructor() {
+    super('All API keys exhausted');
+    this.name = 'AllKeysExhaustedError';
+  }
+}
+
+const callGeminiWithRotation = async (
+  apiKeys: string[],
+  systemPrompt: string,
+  userPrompt: string,
+): Promise<string | null> => {
+  let lastError: GeminiApiError | null = null;
+
+  for (let i = 0; i < apiKeys.length; i += 1) {
+    try {
+      return await callGemini(apiKeys[i], systemPrompt, userPrompt);
+    } catch (err) {
+      if (err instanceof GeminiApiError && err.status === 429) {
+        lastError = err;
+        // Key exhausted, try the next one
+        continue;
+      }
+      // Non-429 errors should propagate immediately
+      throw err;
+    }
+  }
+
+  // All keys returned 429
+  if (lastError) {
+    throw new AllKeysExhaustedError();
+  }
+
+  return null;
+};
+
 export const createGenerateHooksResponse = async ({
-  apiKey,
+  apiKeys,
   body,
   ip = 'unknown',
 }: GenerateHooksHandlerOptions): Promise<
@@ -931,7 +967,7 @@ export const createGenerateHooksResponse = async ({
     };
   }
 
-  if (!apiKey) {
+  if (apiKeys.length === 0) {
     return {
       status: 500,
       payload: { error: 'Server is missing the Gemini API key.' },
@@ -945,8 +981,8 @@ export const createGenerateHooksResponse = async ({
     if (request.mode === 'compare') {
       for (let attempt = 0; attempt < 2; attempt += 1) {
         try {
-          const text = await callGemini(
-            apiKey,
+          const text = await callGeminiWithRotation(
+            apiKeys,
             buildCompareSystemPrompt(request),
             buildCompareUserPrompt(request, attempt > 0),
           );
@@ -957,11 +993,17 @@ export const createGenerateHooksResponse = async ({
             break;
           }
         } catch (err) {
+          if (err instanceof AllKeysExhaustedError) {
+            return {
+              status: 429,
+              payload: {
+                error:
+                  'Dont harass, the API limit is over. So please hold on, Hamza.',
+              },
+            };
+          }
           if (err instanceof GeminiApiError) {
             geminiError = { status: err.status, message: err.message };
-            if (err.status === 429) {
-              break;
-            }
           } else {
             throw err;
           }
@@ -970,8 +1012,8 @@ export const createGenerateHooksResponse = async ({
     } else if (request.mode === 'roast') {
       for (let attempt = 0; attempt < 2; attempt += 1) {
         try {
-          const text = await callGemini(
-            apiKey,
+          const text = await callGeminiWithRotation(
+            apiKeys,
             buildRoastSystemPrompt(request),
             buildRoastUserPrompt(request, attempt > 0),
           );
@@ -995,11 +1037,17 @@ export const createGenerateHooksResponse = async ({
             break;
           }
         } catch (err) {
+          if (err instanceof AllKeysExhaustedError) {
+            return {
+              status: 429,
+              payload: {
+                error:
+                  'Dont harass, the API limit is over. So please hold on, Hamza.',
+              },
+            };
+          }
           if (err instanceof GeminiApiError) {
             geminiError = { status: err.status, message: err.message };
-            if (err.status === 429) {
-              break;
-            }
           } else {
             throw err;
           }
@@ -1008,8 +1056,8 @@ export const createGenerateHooksResponse = async ({
     } else {
       for (let attempt = 0; attempt < 2; attempt += 1) {
         try {
-          const text = await callGemini(
-            apiKey,
+          const text = await callGeminiWithRotation(
+            apiKeys,
             buildGenerateSystemPrompt(request),
             buildGenerateUserPrompt(request, attempt > 0),
           );
@@ -1028,11 +1076,17 @@ export const createGenerateHooksResponse = async ({
             break;
           }
         } catch (err) {
+          if (err instanceof AllKeysExhaustedError) {
+            return {
+              status: 429,
+              payload: {
+                error:
+                  'Dont harass, the API limit is over. So please hold on, Hamza.',
+              },
+            };
+          }
           if (err instanceof GeminiApiError) {
             geminiError = { status: err.status, message: err.message };
-            if (err.status === 429) {
-              break;
-            }
           } else {
             throw err;
           }
@@ -1042,15 +1096,6 @@ export const createGenerateHooksResponse = async ({
 
     if (!generatedHooks) {
       if (geminiError) {
-        if (geminiError.status === 429) {
-          return {
-            status: 429,
-            payload: {
-              error:
-                'Gemini API rate limit exceeded. Please wait a minute and try again.',
-            },
-          };
-        }
         return {
           status: geminiError.status === 400 ? 400 : 502,
           payload: {
@@ -1076,7 +1121,7 @@ export const createGenerateHooksResponse = async ({
 };
 
 export const createRewriteHookResponse = async ({
-  apiKey,
+  apiKeys,
   body,
   ip = 'unknown',
 }: RewriteHookHandlerOptions): Promise<HandlerResult<RewriteHookResponse>> => {
@@ -1093,7 +1138,7 @@ export const createRewriteHookResponse = async ({
     };
   }
 
-  if (!apiKey) {
+  if (apiKeys.length === 0) {
     return {
       status: 500,
       payload: { error: 'Server is missing the Gemini API key.' },
@@ -1101,8 +1146,8 @@ export const createRewriteHookResponse = async ({
   }
 
   try {
-    const text = await callGemini(
-      apiKey,
+    const text = await callGeminiWithRotation(
+      apiKeys,
       buildRewriteSystemPrompt(request),
       request.hook,
     );
@@ -1117,16 +1162,16 @@ export const createRewriteHookResponse = async ({
 
     return { status: 200, payload: rewrittenHook };
   } catch (err) {
+    if (err instanceof AllKeysExhaustedError) {
+      return {
+        status: 429,
+        payload: {
+          error:
+            'Dont harass, the API limit is over. So please hold on, Hamza.',
+        },
+      };
+    }
     if (err instanceof GeminiApiError) {
-      if (err.status === 429) {
-        return {
-          status: 429,
-          payload: {
-            error:
-              'Gemini API rate limit exceeded. Please wait a minute and try again.',
-          },
-        };
-      }
       return {
         status: err.status === 400 ? 400 : 502,
         payload: {

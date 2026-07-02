@@ -12,6 +12,15 @@ const getRequestIp = (request: VercelRequest): string => {
   return request.socket.remoteAddress ?? 'unknown';
 };
 
+const getApiKeys = (): string[] =>
+  [
+    process.env.GEMINI_API_KEY,
+    process.env.GEMINI_API_KEY_2,
+    process.env.GEMINI_API_KEY_3,
+    process.env.GEMINI_API_KEY_4,
+    process.env.GEMINI_API_KEY_5,
+  ].filter((key): key is string => typeof key === 'string' && key.length > 0);
+
 export default async function handler(
   request: VercelRequest,
   response: VercelResponse,
@@ -23,7 +32,7 @@ export default async function handler(
   }
 
   const result = await createRewriteHookResponse({
-    apiKey: process.env.GEMINI_API_KEY,
+    apiKeys: getApiKeys(),
     body: request.body,
     ip: getRequestIp(request),
   });

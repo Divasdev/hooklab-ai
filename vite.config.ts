@@ -37,7 +37,16 @@ const sendJson = (
   response.end(JSON.stringify(payload));
 };
 
-const localApiPlugin = (geminiApiKey?: string): Plugin => ({
+const getApiKeysFromEnv = (): string[] =>
+  [
+    process.env.GEMINI_API_KEY,
+    process.env.GEMINI_API_KEY_2,
+    process.env.GEMINI_API_KEY_3,
+    process.env.GEMINI_API_KEY_4,
+    process.env.GEMINI_API_KEY_5,
+  ].filter((key): key is string => typeof key === 'string' && key.length > 0);
+
+const localApiPlugin = (envApiKeys: string[]): Plugin => ({
   name: 'virality-ai-local-api',
   configureServer(server) {
     const handleLocalApiRequest = async (
@@ -52,8 +61,10 @@ const localApiPlugin = (geminiApiKey?: string): Plugin => ({
 
       try {
         const body = await readRequestBody(request);
+        const apiKeys =
+          envApiKeys.length > 0 ? envApiKeys : getApiKeysFromEnv();
         const result = await createGenerateHooksResponse({
-          apiKey: geminiApiKey ?? process.env.GEMINI_API_KEY,
+          apiKeys,
           body,
           ip: request.socket.remoteAddress ?? 'unknown',
         });
@@ -81,8 +92,10 @@ const localApiPlugin = (geminiApiKey?: string): Plugin => ({
 
       try {
         const body = await readRequestBody(request);
+        const apiKeys =
+          envApiKeys.length > 0 ? envApiKeys : getApiKeysFromEnv();
         const result = await createRewriteHookResponse({
-          apiKey: geminiApiKey ?? process.env.GEMINI_API_KEY,
+          apiKeys,
           body,
           ip: request.socket.remoteAddress ?? 'unknown',
         });
@@ -111,7 +124,16 @@ const localApiPlugin = (geminiApiKey?: string): Plugin => ({
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
 
+  const apiKeys = [
+    env.GEMINI_API_KEY,
+    env.GEMINI_API_KEY_2,
+    env.GEMINI_API_KEY_3,
+    env.GEMINI_API_KEY_4,
+    env.GEMINI_API_KEY_5,
+  ].filter((key): key is string => typeof key === 'string' && key.length > 0);
+
   return {
-    plugins: [react(), localApiPlugin(env.GEMINI_API_KEY)],
+    plugins: [react(), localApiPlugin(apiKeys)],
   };
 });
+
