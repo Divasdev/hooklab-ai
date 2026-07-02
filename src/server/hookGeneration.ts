@@ -50,12 +50,14 @@ export interface GenerateHooksHandlerOptions {
   apiKeys: string[];
   body: unknown;
   ip?: string;
+  model?: string;
 }
 
 export interface RewriteHookHandlerOptions {
   apiKeys: string[];
   body: unknown;
   ip?: string;
+  model?: string;
 }
 
 export interface HandlerResult<TPayload> {
@@ -63,7 +65,7 @@ export interface HandlerResult<TPayload> {
   payload: TPayload | { error: string };
 }
 
-const geminiModel = 'gemini-2.5-flash';
+export const defaultGeminiModel = 'gemini-2.5-flash';
 const oneHourMs = 60 * 60 * 1000;
 const generateRateLimits = new Map<string, RateLimitBucket>();
 const rewriteRateLimits = new Map<string, RateLimitBucket>();
@@ -102,8 +104,8 @@ const isRewriteDirection = (value: unknown): value is RewriteDirection =>
 const stripJsonFences = (text: string): string =>
   text
     .trim()
-    .replace(/^```(?:json)?\s*/i, '')
-    .replace(/\s*```$/i, '')
+    .replace(/^[\s\S]*?```(?:json)?\s*/i, '')
+    .replace(/\s*```[\s\S]*$/i, '')
     .trim();
 
 const normalizeScore = (value: unknown): number | null => {
@@ -855,11 +857,13 @@ class GeminiApiError extends Error {
 
 const callGemini = async (
   apiKey: string,
+  model: string,
   systemPrompt: string,
   userPrompt: string,
 ): Promise<string | null> => {
+  const start = Date.now();
   const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${encodeURIComponent(apiKey)}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`,
     {
       method: 'POST',
       headers: {
@@ -888,9 +892,10 @@ const callGemini = async (
   );
 
   if (!response.ok) {
+    const body = await response.text();
     let errMsg = 'Gemini API error';
     try {
-      const errPayload = (await response.json()) as Record<string, unknown>;
+      const errPayload = JSON.parse(body) as Record<string, unknown>;
       if (
         errPayload &&
         typeof errPayload.error === 'object' &&
@@ -904,11 +909,21 @@ const callGemini = async (
     } catch {
       // ignore
     }
+    console.error(`[HookLab] Gemini error status: ${response.status}`);
+    console.error(`[HookLab] Error body: ${body.slice(0, 2000)}`);
     throw new GeminiApiError(response.status, errMsg);
   }
 
   const payload = (await response.json()) as GeminiGenerateContentResponse;
-  return extractGeminiText(payload);
+  const text = extractGeminiText(payload);
+  console.info(`[HookLab] Gemini response parsed in ${Date.now() - start}ms`);
+  if (!text) {
+    console.warn('[HookLab] Gemini returned 200 but no text was extracted.');
+    console.warn(
+      `[HookLab] Gemini success payload: ${JSON.stringify(payload).slice(0, 2000)}`,
+    );
+  }
+  return text;
 };
 
 class AllKeysExhaustedError extends Error {
@@ -920,19 +935,46 @@ class AllKeysExhaustedError extends Error {
 
 const callGeminiWithRotation = async (
   apiKeys: string[],
+  model: string,
   systemPrompt: string,
   userPrompt: string,
 ): Promise<string | null> => {
   let lastError: GeminiApiError | null = null;
 
+  console.info(
+    `[HookLab] Starting Gemini call. Keys available: ${apiKeys.length}`,
+  );
+  console.info(`[HookLab] Model: ${model}`);
+
   for (let i = 0; i < apiKeys.length; i += 1) {
+    const key = apiKeys[i];
+    const start = Date.now();
+    console.info(
+      `[HookLab] Trying key ${i + 1}/${apiKeys.length} - ${key.slice(0, 8)}...`,
+    );
+
     try {
-      return await callGemini(apiKeys[i], systemPrompt, userPrompt);
+      const text = await callGemini(key, model, systemPrompt, userPrompt);
+      console.info(
+        `[HookLab] Key ${i + 1} succeeded in ${Date.now() - start}ms`,
+      );
+      return text;
     } catch (err) {
       if (err instanceof GeminiApiError && err.status === 429) {
         lastError = err;
+        console.warn(`[HookLab] 429 on key ${i + 1}. Rotating...`);
         // Key exhausted, try the next one
         continue;
+      }
+      if (err instanceof GeminiApiError) {
+        console.error(`[HookLab] Non-429 error on key ${i + 1}: ${err.status}`);
+        console.error(`[HookLab] Gemini API message: ${err.message}`);
+      } else {
+        console.error(
+          `[HookLab] Unexpected Gemini call failure on key ${i + 1}: ${String(
+            err,
+          )}`,
+        );
       }
       // Non-429 errors should propagate immediately
       throw err;
@@ -941,9 +983,13 @@ const callGeminiWithRotation = async (
 
   // All keys returned 429
   if (lastError) {
+    console.error(
+      `[HookLab] ALL ${apiKeys.length} keys exhausted. Returning friendly error.`,
+    );
     throw new AllKeysExhaustedError();
   }
 
+  console.warn('[HookLab] Gemini rotation finished without a result or error.');
   return null;
 };
 
@@ -951,16 +997,23 @@ export const createGenerateHooksResponse = async ({
   apiKeys,
   body,
   ip = 'unknown',
+  model = defaultGeminiModel,
 }: GenerateHooksHandlerOptions): Promise<
   HandlerResult<GenerateHooksResponse>
 > => {
   const request = validateGenerateBody(body);
 
   if ('error' in request) {
+    console.warn(`[HookLab] Invalid generate request: ${request.error}`);
     return { status: 400, payload: { error: request.error } };
   }
 
+  console.info(
+    `[HookLab] Generate request accepted. mode=${request.mode}, platform=${request.platform}, ip=${ip}`,
+  );
+
   if (!checkRateLimit(generateRateLimits, ip, 10)) {
+    console.warn(`[HookLab] Generate rate limit exceeded for ip=${ip}`);
     return {
       status: 429,
       payload: { error: 'Too many requests. Try again in a bit.' },
@@ -968,6 +1021,7 @@ export const createGenerateHooksResponse = async ({
   }
 
   if (apiKeys.length === 0) {
+    console.error('[HookLab] Generate failed before Gemini call: no API keys.');
     return {
       status: 500,
       payload: { error: 'Server is missing the Gemini API key.' },
@@ -983,6 +1037,7 @@ export const createGenerateHooksResponse = async ({
         try {
           const text = await callGeminiWithRotation(
             apiKeys,
+            model,
             buildCompareSystemPrompt(request),
             buildCompareUserPrompt(request, attempt > 0),
           );
@@ -992,6 +1047,9 @@ export const createGenerateHooksResponse = async ({
             generatedHooks = { mode: 'compare', compare: parsedCompare };
             break;
           }
+          console.warn(
+            `[HookLab] Compare payload parse failed on attempt ${attempt + 1}.`,
+          );
         } catch (err) {
           if (err instanceof AllKeysExhaustedError) {
             return {
@@ -1014,6 +1072,7 @@ export const createGenerateHooksResponse = async ({
         try {
           const text = await callGeminiWithRotation(
             apiKeys,
+            model,
             buildRoastSystemPrompt(request),
             buildRoastUserPrompt(request, attempt > 0),
           );
@@ -1036,6 +1095,9 @@ export const createGenerateHooksResponse = async ({
             };
             break;
           }
+          console.warn(
+            `[HookLab] Roast payload parse/grounding failed on attempt ${attempt + 1}.`,
+          );
         } catch (err) {
           if (err instanceof AllKeysExhaustedError) {
             return {
@@ -1058,6 +1120,7 @@ export const createGenerateHooksResponse = async ({
         try {
           const text = await callGeminiWithRotation(
             apiKeys,
+            model,
             buildGenerateSystemPrompt(request),
             buildGenerateUserPrompt(request, attempt > 0),
           );
@@ -1075,6 +1138,9 @@ export const createGenerateHooksResponse = async ({
             generatedHooks = { mode: 'generate', hooks: parsedHooks.hooks };
             break;
           }
+          console.warn(
+            `[HookLab] Generate payload parse/grounding failed on attempt ${attempt + 1}.`,
+          );
         } catch (err) {
           if (err instanceof AllKeysExhaustedError) {
             return {
@@ -1096,6 +1162,9 @@ export const createGenerateHooksResponse = async ({
 
     if (!generatedHooks) {
       if (geminiError) {
+        console.error(
+          `[HookLab] Returning Gemini error to client. status=${geminiError.status}, message=${geminiError.message}`,
+        );
         return {
           status: geminiError.status === 400 ? 400 : 502,
           payload: {
@@ -1105,6 +1174,9 @@ export const createGenerateHooksResponse = async ({
           },
         };
       }
+      console.error(
+        '[HookLab] Returning generic 502: Gemini response could not be parsed or grounded.',
+      );
       return {
         status: 502,
         payload: { error: 'Something went wrong on our end. Try again.' },
@@ -1112,7 +1184,8 @@ export const createGenerateHooksResponse = async ({
     }
 
     return { status: 200, payload: generatedHooks };
-  } catch {
+  } catch (err) {
+    console.error(`[HookLab] Unhandled generate failure: ${String(err)}`);
     return {
       status: 502,
       payload: { error: 'Something went wrong on our end. Try again.' },
@@ -1124,14 +1197,21 @@ export const createRewriteHookResponse = async ({
   apiKeys,
   body,
   ip = 'unknown',
+  model = defaultGeminiModel,
 }: RewriteHookHandlerOptions): Promise<HandlerResult<RewriteHookResponse>> => {
   const request = validateRewriteBody(body);
 
   if ('error' in request) {
+    console.warn(`[HookLab] Invalid rewrite request: ${request.error}`);
     return { status: 400, payload: { error: request.error } };
   }
 
+  console.info(
+    `[HookLab] Rewrite request accepted. direction=${request.direction}, ip=${ip}`,
+  );
+
   if (!checkRateLimit(rewriteRateLimits, ip, 20)) {
+    console.warn(`[HookLab] Rewrite rate limit exceeded for ip=${ip}`);
     return {
       status: 429,
       payload: { error: 'Too many requests. Try again in a bit.' },
@@ -1139,6 +1219,7 @@ export const createRewriteHookResponse = async ({
   }
 
   if (apiKeys.length === 0) {
+    console.error('[HookLab] Rewrite failed before Gemini call: no API keys.');
     return {
       status: 500,
       payload: { error: 'Server is missing the Gemini API key.' },
@@ -1148,12 +1229,14 @@ export const createRewriteHookResponse = async ({
   try {
     const text = await callGeminiWithRotation(
       apiKeys,
+      model,
       buildRewriteSystemPrompt(request),
       request.hook,
     );
     const rewrittenHook = text ? parseRewritePayload(text) : null;
 
     if (!rewrittenHook) {
+      console.error('[HookLab] Rewrite payload parse failed.');
       return {
         status: 502,
         payload: { error: 'Something went wrong on our end. Try again.' },
@@ -1172,6 +1255,9 @@ export const createRewriteHookResponse = async ({
       };
     }
     if (err instanceof GeminiApiError) {
+      console.error(
+        `[HookLab] Returning rewrite Gemini error to client. status=${err.status}, message=${err.message}`,
+      );
       return {
         status: err.status === 400 ? 400 : 502,
         payload: {
@@ -1179,6 +1265,7 @@ export const createRewriteHookResponse = async ({
         },
       };
     }
+    console.error(`[HookLab] Unhandled rewrite failure: ${String(err)}`);
     return {
       status: 502,
       payload: { error: 'Something went wrong on our end. Try again.' },
