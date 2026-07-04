@@ -1,0 +1,13 @@
+{
+  "functions": {
+    "api/generate-hooks.ts": {
+      "maxDuration": 60
+    },
+    "api/rewrite-hook.ts": {
+      "maxDuration": 60
+    },
+    "api/debug.ts": {
+      "maxDuration": 30
+    }
+  }
+}

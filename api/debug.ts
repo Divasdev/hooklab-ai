@@ -74,6 +74,61 @@ export default async function handler(
 
   const report: Record<string, unknown> = {};
 
+  // ── PLATFORM TEST ──────────────────────────────────────────────
+  const reqBody = req.body as Record<string, unknown> | undefined;
+  if (req.method === 'POST' && typeof reqBody?.testPlatform === 'string') {
+    const testPlatform = reqBody.testPlatform;
+    const testScript = "I trained for 90 days straight and this is what happened.";
+    
+    report.platformTest = {
+      platform: testPlatform,
+      status: 'PENDING',
+    };
+
+    try {
+      // Import the full handler dynamically to prevent circular deps or just use it if already imported
+      const { createGenerateHooksResponse } = await import('../src/server/hookGeneration.js');
+      const result = await createGenerateHooksResponse({
+        apiKeys: getAvailableKeys().map(k => k.value),
+        ip: '127.0.0.1',
+        model: getGeminiModel(),
+        body: {
+          script: testScript,
+          platform: testPlatform,
+          tone: 'Punchy',
+          audience: 'Creators',
+          intensity: 'Sharp',
+          language: 'English',
+          hookWindow: 3,
+        }
+      });
+      
+      const payload = result.payload as Record<string, unknown>;
+      const hooks = Array.isArray(payload.hooks) ? payload.hooks : [];
+      const firstHook = hooks.length > 0 && typeof hooks[0] === 'object' && hooks[0] !== null 
+        ? (hooks[0] as { text?: string }).text 
+        : undefined;
+      
+      report.platformTest = {
+        ...(report.platformTest as Record<string, unknown>),
+        status: result.status === 200 ? 'SUCCESS ✅' : `FAILED ❌ (HTTP ${result.status})`,
+        hooksCount: hooks.length,
+        firstHook,
+        error: payload.error,
+      };
+    } catch (e) {
+      report.platformTest = {
+        ...(report.platformTest as Record<string, unknown>),
+        status: 'FAILED ❌',
+        error: String(e),
+      };
+    }
+    
+    // Return early for platform tests
+    res.status(200).json(report);
+    return;
+  }
+
   report.env = {};
   for (const name of keyNames) {
     const value = process.env[name]?.trim();

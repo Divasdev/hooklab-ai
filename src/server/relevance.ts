@@ -172,11 +172,11 @@ export const isGenerationGrounded = (
       }
     }
 
-    if (anchorMatches === 0) {
-      return false;
-    }
+    // Allow some hooks (like pattern interrupts) to have zero anchor matches
+    // The overall batch must still satisfy minimumUniqueAnchorCoverage below.
 
     if (hasUnsupportedNumericClaim(request, hookText)) {
+      console.warn('[HookLab] Grounding failed: hasUnsupportedNumericClaim for hook:', hook.framework);
       return false;
     }
 
@@ -184,9 +184,15 @@ export const isGenerationGrounded = (
       !allowCreatorTerms &&
       offTopicCreatorTerms.some((term) => normalizedHookText.includes(term))
     ) {
+      console.warn('[HookLab] Grounding failed: offTopicCreatorTerms found in hook:', hook.framework);
       return false;
     }
   }
 
-  return usedAnchors.size >= minimumUniqueAnchorCoverage;
+  if (usedAnchors.size < minimumUniqueAnchorCoverage) {
+    console.warn(`[HookLab] Grounding failed: usedAnchors.size (${usedAnchors.size}) < minimumUniqueAnchorCoverage (${minimumUniqueAnchorCoverage})`);
+    return false;
+  }
+
+  return true;
 };

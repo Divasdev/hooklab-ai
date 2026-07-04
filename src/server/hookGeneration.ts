@@ -101,12 +101,24 @@ const isRewriteDirection = (value: unknown): value is RewriteDirection =>
   typeof value === 'string' &&
   rewriteDirections.includes(value as RewriteDirection);
 
-const stripJsonFences = (text: string): string =>
-  text
+const stripJsonFences = (text: string): string => {
+  let cleaned = text
     .trim()
     .replace(/^[\s\S]*?```(?:json)?\s*/i, '')
-    .replace(/\s*```[\s\S]*$/i, '')
-    .trim();
+    .replace(/\s*```[\s\S]*$/i, '');
+  
+  const firstBrace = cleaned.indexOf("{");
+  if (firstBrace > 0) {
+    cleaned = cleaned.slice(firstBrace);
+  }
+  
+  const lastBrace = cleaned.lastIndexOf("}");
+  if (lastBrace !== -1 && lastBrace < cleaned.length - 1) {
+    cleaned = cleaned.slice(0, lastBrace + 1);
+  }
+  
+  return cleaned.trim();
+};
 
 const normalizeScore = (value: unknown): number | null => {
   if (typeof value !== 'number' || !Number.isFinite(value)) {
@@ -151,11 +163,13 @@ const parseHooksPayload = (
 
   try {
     parsed = JSON.parse(stripJsonFences(rawText));
-  } catch {
+  } catch (e) {
+    console.error('[HookLab] parseHooksPayload JSON parse failed:', e, '\nRaw Text:', rawText);
     return null;
   }
 
   if (!isRecord(parsed) || !Array.isArray(parsed.hooks)) {
+    console.error('[HookLab] parseHooksPayload invalid structure, expected object with hooks array.');
     return null;
   }
 
@@ -166,22 +180,38 @@ const parseHooksPayload = (
 
   for (const item of parsed.hooks) {
     if (!isRecord(item)) {
+      console.error('[HookLab] item in hooks array is not a record:', item);
       return null;
     }
 
     const scores = parseScores(item.scores);
 
-    if (
-      !isHookFramework(item.framework) ||
-      typeof item.text !== 'string' ||
-      item.text.trim().length === 0 ||
-      typeof item.why !== 'string' ||
-      item.why.trim().length === 0 ||
-      !allowedTimecodes.includes(item.timecode as HookTimecode) ||
-      scores === null ||
-      typeof item.best_pick !== 'boolean' ||
-      seenFrameworks.has(item.framework)
-    ) {
+    if (!isHookFramework(item.framework)) {
+      console.error('[HookLab] Invalid framework:', item.framework);
+      return null;
+    }
+    if (typeof item.text !== 'string' || item.text.trim().length === 0) {
+      console.error('[HookLab] Invalid text for framework', item.framework, item.text);
+      return null;
+    }
+    if (typeof item.why !== 'string' || item.why.trim().length === 0) {
+      console.error('[HookLab] Invalid why for framework', item.framework, item.why);
+      return null;
+    }
+    if (!allowedTimecodes.includes(item.timecode as HookTimecode)) {
+      console.error('[HookLab] Invalid timecode for framework', item.framework, item.timecode);
+      return null;
+    }
+    if (scores === null) {
+      console.error('[HookLab] Invalid scores for framework', item.framework, item.scores);
+      return null;
+    }
+    if (typeof item.best_pick !== 'boolean') {
+      console.error('[HookLab] Invalid best_pick for framework', item.framework, item.best_pick);
+      return null;
+    }
+    if (seenFrameworks.has(item.framework)) {
+      console.error('[HookLab] Duplicate framework:', item.framework);
       return null;
     }
 
@@ -499,117 +529,103 @@ const checkRateLimit = (
 
 const platformDirections: Record<Platform, string> = {
   'YouTube Shorts':
-    'Use clear setup, fast context, and a broad curiosity engine for Shorts viewers who decide in under two seconds.',
+    'Fast-paced, curiosity-driven, 15-60 seconds. Hook must work without sound. First frame matters most.',
   'Instagram Reels':
-    'Use polished creator language, visual-first pacing, and emotionally legible hooks suited to Reels discovery.',
+    "Emotion-first, identity-driven, 15-30 seconds. Viewer must feel seen or called out immediately. Use 'you' language.",
   TikTok:
-    'Use direct, conversational phrasing with punchy pattern breaks and native-feeling urgency for TikTok pacing.',
+    'Pattern interrupt heavy, 7-15 seconds ideal. Weird, specific, or controversial openings outperform polished ones. Raw beats produced.',
 };
 
 const toneDirections: Record<Tone, string> = {
   Punchy:
-    'Make the writing tight, fast, and high-impact. Prefer short clauses and hard turns.',
+    'Short sentences. High energy. No wasted words.',
   Clean:
-    'Make the writing clear, useful, and credible. Avoid hype and keep the promise precise.',
+    'Clear, professional, trustworthy. No hype.',
   Controversial:
-    'Create productive tension or contrarian framing without making false claims.',
+    'Challenge a common belief. Start a debate.',
   Story:
-    'Open through a specific moment, transformation, or narrative setup that makes viewers want the next beat.',
+    'Pull them into a moment. Past tense. Specific detail.',
 };
 
 const audienceDirections: Record<Audience, string> = {
-  Beginners:
-    'Assume low context. Make the hook instantly understandable and avoid insider jargon.',
-  Creators:
-    'Speak to people making content, editing videos, and watching retention curves.',
-  Business:
-    'Frame the hook around revenue, offers, systems, customer behavior, or practical leverage.',
-  Fitness:
-    'Frame the hook around visible progress, consistency, mistakes, body change, or discipline.',
-  Finance:
-    'Frame the hook around money behavior, savings, investing mistakes, or measurable outcomes.',
+  Beginners: 'Instantly understandable. No jargon.',
+  Creators: 'Speak to creators and video editors.',
+  Business: 'Focus on revenue, systems, or leverage.',
+  Fitness: 'Focus on visible progress or discipline.',
+  Finance: 'Focus on money behavior and outcomes.',
 };
 
 const intensityDirections: Record<Intensity, string> = {
-  Safe: 'Keep the hook credible and restrained. No manufactured drama.',
-  Sharp:
-    'Use stronger tension and more decisive language while staying believable.',
-  Aggressive:
-    'Push the hook harder with urgency, stakes, and blunt contrast. Do not invent facts.',
+  Safe: 'Direct and confident but kind.',
+  Sharp: 'Blunt. No softening.',
+  Aggressive: 'No mercy. Maximum tension. Push every boundary.',
 };
 
 const languageDirections: Record<HookLanguage, string> = {
-  English:
-    'Write in natural English for short-form creators. Keep phrasing crisp and conversational.',
-  Hinglish:
-    'Write authentic Indian internet Hinglish in Roman script, mixing Hindi and English naturally the way Indian YouTube/Instagram creators speak. Do not sound translated or formal.',
-  Hindi:
-    'Write pure Devanagari Hindi. Use proper Hindi grammar. Do not use Roman script.',
+  English: 'Write in fluent English.',
+  Hinglish: 'Write in natural Hinglish — the way Indian creators actually speak on YouTube and Instagram. Mix Hindi and English naturally. NOT translated Hindi. Real internet Hinglish.',
+  Hindi: 'Write entirely in Hindi using Devanagari script. Proper grammar.',
 };
 
 const buildGenerateSystemPrompt = (request: GenerateHooksRequest): string =>
   `
-You are Virality AI, a senior short-form video editor and retention strategist.
-Your job is to help the creator decide which first-${request.hookWindow}-seconds hook to use.
+You are an expert video hook writer who has studied 10,000 viral videos.
+Your job is to rewrite the user's SOURCE SCRIPT opening hook in 10 different frameworks.
 
 CRITICAL SOURCE-GROUNDING RULE:
 You are rewriting the user's SOURCE SCRIPT. The SOURCE SCRIPT is the only source of truth.
 Every hook must preserve the script's exact topic, niche, facts, intent, and core claim.
 Never switch to generic creator advice, social media advice, editing advice, or another niche unless that is explicitly what the SOURCE SCRIPT is about.
-If the SOURCE SCRIPT is about aviation, every output must stay about aviation.
-If the SOURCE SCRIPT is about engine failure and pilots, every output must remain about engine failure, pilots, passenger fear, or airliner safety.
 Do not invent new subject matter, fake statistics, fake outcomes, or unrelated examples.
-Do not add numbers, percentages, time spans, certifications, rankings, or measurable claims that are not in the SOURCE SCRIPT.
-If a framework such as STAT SHOCK needs a statistic but the SOURCE SCRIPT has no statistic, use the most concrete factual contrast already present instead.
 Do not write hooks about Reels, TikTok, creators, posting, views, editing, or content unless those ideas appear in the SOURCE SCRIPT.
 
-Platform: ${request.platform}
-Tone: ${request.tone}
-Audience: ${request.audience}
-Intensity: ${request.intensity}
-Language: ${request.language}
-Hook window: ${request.hookWindow} seconds
+PLATFORM: ${request.platform}
+Platform rules: ${platformDirections[request.platform] ?? "Short-form video. Hook must stop the scroll instantly."}
 
-Platform direction: ${platformDirections[request.platform]}
-Tone direction: ${toneDirections[request.tone]}
-Audience direction: ${audienceDirections[request.audience]}
-Intensity direction: ${intensityDirections[request.intensity]}
-Language direction: ${languageDirections[request.language]}
+TONE: ${request.tone} — ${toneDirections[request.tone] ?? "Engaging and clear."}
+AUDIENCE: ${request.audience} — ${audienceDirections[request.audience]}
+INTENSITY: ${request.intensity} — ${intensityDirections[request.intensity] ?? "Confident and direct."}
+LANGUAGE: ${languageDirections[request.language] ?? "Write in English."}
+
+YOUR TASK:
+Rewrite the given script's opening hook in 10 different frameworks.
 Source-topic anchors to preserve where natural: ${extractTopicAnchors(request.script).join(', ')}
 
-Return strict JSON only. No markdown fences, no preamble, no commentary.
-Return exactly this shape:
+FRAMEWORKS TO USE (exactly these, in this order):
+${hookFrameworks.map((fw, i) => `${i + 1}. ${fw}`).join('\n')}
+
+CRITICAL RULES:
+- Return ONLY valid JSON. No text before or after. No markdown. No explanation.
+- Do not write \`\`\`json or any code fences.
+- Start your response with { and end with }
+- Every hook must be platform-appropriate for ${request.platform}
+- Set exactly one item to "best_pick": true. Pick the strongest default choice for ${request.platform}.
+- Keep every hook short enough to say inside ${request.hookWindow} seconds.
+- Every hook should include at least one concrete source-specific noun, entity, or fact when natural.
+- The timecode must always be "${hookWindowTimecodes[request.hookWindow]}".
+- "why" must be 1-2 short sentences explaining the attention mechanism. Specific to this hook, not generic praise.
+- Scores must be integers from 0 to 100.
+- Score curiosity by unanswered tension, clarity by instant understanding, scroll_stop by pause power, and platform_fit by pacing match.
+- Do not include quotation marks around the spoken hook unless the line itself needs them.
+
+REQUIRED JSON SHAPE:
 {
   "hooks": [
     {
       "framework": "CURIOSITY GAP",
-      "text": "...",
-      "why": "...",
+      "text": "the rewritten hook here",
+      "why": "why this works for this specific script and platform",
       "timecode": "${hookWindowTimecodes[request.hookWindow]}",
       "scores": {
-        "curiosity": 88,
-        "clarity": 72,
+        "curiosity": 85,
+        "clarity": 78,
         "scroll_stop": 91,
-        "platform_fit": 85
+        "platform_fit": 88
       },
       "best_pick": false
     }
   ]
 }
-
-Rules:
-- Return exactly 10 items.
-- Use each framework exactly once: ${hookFrameworks.join(', ')}.
-- Set exactly one item to "best_pick": true. Pick the strongest default choice for ${request.platform}.
-- Keep every hook short enough to say inside ${request.hookWindow} seconds.
-- Every hook must clearly be a rewrite of the SOURCE SCRIPT, not a generic hook template.
-- Every hook should include at least one concrete source-specific noun, entity, or fact when natural.
-- Do not add unsupported numeric claims. Reuse only numbers/facts already present in the SOURCE SCRIPT.
-- The timecode must always be "${hookWindowTimecodes[request.hookWindow]}".
-- "why" must be 1-2 short sentences explaining the attention mechanism, not generic praise.
-- Scores must be integers from 0 to 100.
-- Score curiosity by unanswered tension, clarity by instant understanding, scroll_stop by pause power, and platform_fit by pacing match.
-- Do not include quotation marks around the spoken hook unless the line itself needs them.
 `.trim();
 
 const buildGenerateUserPrompt = (
