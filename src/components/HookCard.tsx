@@ -59,7 +59,7 @@ export function HookCard({
   const cardStyle = hook.best_pick
     ? {
         boxShadow:
-          '0 0 0 1.5px var(--accent-amber), 0 0 12px rgba(255,138,61,0.15)',
+          '0 0 0 1.5px var(--accent-amber), 0 0 8px rgba(217,154,43,0.08)',
       }
     : undefined;
 
