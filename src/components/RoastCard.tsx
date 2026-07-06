@@ -11,7 +11,7 @@ export function RoastCard({ roast, originalHook }: RoastCardProps) {
       className="mb-6 rounded-md border border-red/30 bg-red/5 p-5 shadow-panel opacity-0 motion-safe:animate-cardIn"
       style={{
         boxShadow:
-          '0 0 0 1px rgba(239, 68, 68, 0.2), 0 0 18px rgba(239, 68, 68, 0.08)',
+          '0 0 0 1px rgba(239, 107, 107, 0.15), 0 0 12px rgba(239, 107, 107, 0.04)',
       }}
     >
       <div className="mb-4 flex flex-wrap items-center gap-3">
