@@ -1,6 +1,6 @@
-# Virality AI
+# HookLab.AI
 
-Virality AI is an AI-powered tool that rewrites the first five seconds of a video idea into 10 proven hook frameworks.
+HookLab.AI is an AI-powered tool that rewrites the first five seconds of a video idea into 10 proven hook frameworks.
 
 ## Local Development
 
@@ -24,7 +24,7 @@ Virality AI is an AI-powered tool that rewrites the first five seconds of a vide
 
 ## Deployment Instructions
 
-Virality AI is a full-stack application. The frontend is a React application built with Vite, and the backend relies on serverless functions to securely interact with the Gemini API without leaking your API key to the client.
+HookLab.AI is a full-stack application. The frontend is a React application built with Vite, and the backend relies on serverless functions to securely interact with the Gemini API without leaking your API key to the client.
 
 ### Option 1: Vercel (Recommended)
 
