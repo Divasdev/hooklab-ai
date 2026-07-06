@@ -1,9 +1,11 @@
 import { Clock3, Flame, Scissors } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
+import { BackToTop } from './components/BackToTop';
 import { ComparisonSection } from './components/ComparisonSection';
 import { CompareCard } from './components/CompareCard';
 import { ControlsPanel } from './components/ControlsPanel';
+import { ExampleChips } from './components/ExampleChips';
 import { ExportBar } from './components/ExportBar';
 import { HistoryDrawer } from './components/HistoryDrawer';
 import { HookCard } from './components/HookCard';
@@ -12,12 +14,13 @@ import { PlatformSelector } from './components/PlatformSelector';
 import { RoastCard } from './components/RoastCard';
 import { ScriptInput } from './components/ScriptInput';
 import { SkeletonCard } from './components/SkeletonCard';
-import { TemplateLibrary } from './components/TemplateLibrary';
+import { TemplateSheet } from './components/TemplateSheet';
+import { TemplateTrigger } from './components/TemplateTrigger';
 import { type ScriptTemplate } from './data/templates';
 import { useHistory } from './hooks/useHistory';
 import {
   generateHooks,
-  ViralityAiApiError,
+  HookLabApiError,
   rewriteHook,
 } from './services/hooksApi';
 import type {
@@ -58,6 +61,7 @@ function App() {
   >({});
   const [currentRequest, setCurrentRequest] =
     useState<GenerateHooksRequest | null>(null);
+  const [successfulResultId, setSuccessfulResultId] = useState(0);
   const [inputError, setInputError] = useState<string | null>(null);
   const [surfaceError, setSurfaceError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -65,6 +69,8 @@ function App() {
     HookResult['framework'] | null
   >(null);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [isTemplateSheetOpen, setIsTemplateSheetOpen] = useState(false);
+  const resultsRef = useRef<HTMLDivElement>(null);
   const { entries, saveEntry, deleteEntry, clearEntries } = useHistory();
 
   const minLength = mode === 'roast' ? 5 : 20;
@@ -106,8 +112,34 @@ function App() {
     mode,
   });
 
+  useEffect(() => {
+    const hasResults = compareResult !== null || hooks.length > 0;
+
+    if (successfulResultId === 0 || isLoading || !hasResults) {
+      return;
+    }
+
+    const resultsElement = resultsRef.current;
+    if (!resultsElement) {
+      return;
+    }
+
+    const frameId = window.requestAnimationFrame(() => {
+      const prefersReducedMotion = window.matchMedia(
+        '(prefers-reduced-motion: reduce)',
+      ).matches;
+
+      resultsElement.scrollIntoView({
+        behavior: prefersReducedMotion ? 'auto' : 'smooth',
+        block: 'start',
+      });
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, [compareResult, hooks.length, isLoading, successfulResultId]);
+
   const handleError = (caughtError: unknown): void => {
-    if (caughtError instanceof ViralityAiApiError) {
+    if (caughtError instanceof HookLabApiError) {
       if (caughtError.status === 400) {
         setInputError(caughtError.message);
         return;
@@ -142,6 +174,7 @@ function App() {
         setRoastOriginalHook('');
         setCompareResult(response.compare);
         setCurrentRequest(request);
+        setSuccessfulResultId((currentId) => currentId + 1);
         saveEntry(request, undefined, undefined, response.compare);
       } else if (response.mode === 'roast') {
         setHooks(response.hooks);
@@ -149,6 +182,7 @@ function App() {
         setRoastOriginalHook(request.script);
         setCompareResult(null);
         setCurrentRequest(request);
+        setSuccessfulResultId((currentId) => currentId + 1);
         saveEntry(request, response.hooks, response.roast);
       } else {
         setHooks(response.hooks);
@@ -156,6 +190,7 @@ function App() {
         setRoastOriginalHook('');
         setCompareResult(null);
         setCurrentRequest(request);
+        setSuccessfulResultId((currentId) => currentId + 1);
         saveEntry(request, response.hooks);
       }
     } catch (caughtError) {
@@ -278,10 +313,10 @@ function App() {
   return (
     <main className="min-h-screen bg-bg text-primary">
       <div className="mx-auto flex min-h-screen w-full max-w-[1720px] flex-col px-4 py-5 sm:px-6 lg:px-8">
-        <header className="grid gap-6 border-b border-white/10 pb-6 lg:grid-cols-[1fr_auto_auto] lg:items-end">
+        <header className="grid gap-6 border-b border-border pb-6 lg:grid-cols-[1fr_auto_auto] lg:items-end">
           <div>
             <p className="mb-3 font-mono text-xs uppercase tracking-[0.22em] text-amber">
-              00:00 Virality AI
+              00:00 HookLab.AI
             </p>
             <h1 className="max-w-4xl font-display text-[clamp(2.75rem,8vw,6.75rem)] font-semibold leading-[0.9] tracking-normal">
               Cut the first few seconds before the edit.
@@ -310,12 +345,24 @@ function App() {
                 void cutHooks();
               }}
             >
-              <ModeToggle
-                mode={mode}
-                disabled={isLoading}
-                onChange={handleModeChange}
-              />
+              <div className="sticky top-0 z-40 -mx-4 bg-bg px-4 py-2 border-b border-border md:static md:mx-0 md:px-0 md:py-0 md:bg-transparent md:border-b-0">
+                <ModeToggle
+                  mode={mode}
+                  disabled={isLoading}
+                  onChange={handleModeChange}
+                />
+              </div>
               <div>
+                {mode === 'generate' ? (
+                  <p className="mb-2 text-sm text-muted">
+                    Rewrite your opening line into stronger short-form hooks.
+                  </p>
+                ) : null}
+                <ExampleChips
+                  mode={mode}
+                  onLoadScript={(s) => { setScript(s); }}
+                  onLoadCompare={(a, b) => { setScript(a); setHookB(b); }}
+                />
                 <ScriptInput
                   value={script}
                   onChange={setScript}
@@ -352,12 +399,12 @@ function App() {
               <button
                 type="submit"
                 disabled={!canSubmit}
-                className={`inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-md px-5 py-3 font-display text-base font-semibold text-bg transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-muted sm:w-auto ${
+                className={`inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-md px-5 py-3 font-display text-base font-semibold text-bg transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-muted sm:w-auto ${
                   mode === 'roast'
-                    ? 'bg-red hover:bg-[#dc2626]'
+                    ? 'bg-red hover:brightness-110'
                     : mode === 'compare'
-                      ? 'bg-cyan hover:bg-[#06b6d4]'
-                      : 'bg-amber hover:bg-[#ff9a57]'
+                      ? 'bg-cyan hover:brightness-110'
+                      : 'bg-amber hover:brightness-110'
                 }`}
               >
                 {mode === 'roast' ? (
@@ -380,7 +427,6 @@ function App() {
             </form>
 
             <ComparisonSection />
-            <TemplateLibrary onSelect={selectTemplate} disabled={isLoading} />
           </div>
 
           <section aria-live="polite" aria-busy={isLoading}>
@@ -419,8 +465,11 @@ function App() {
                 ))}
               </div>
             ) : compareResult ? (
-              <>
-                <CompareCard compare={compareResult} />
+              <div
+                ref={resultsRef}
+                className="scroll-mt-24 space-y-4 md:scroll-mt-0"
+              >
+                <CompareCard compare={compareResult} hookA={script} hookB={hookB} />
                 {currentRequest ? (
                   <ExportBar
                     hooks={[]}
@@ -428,9 +477,12 @@ function App() {
                     compare={compareResult}
                   />
                 ) : null}
-              </>
+              </div>
             ) : sortedHooks.length > 0 ? (
-              <>
+              <div
+                ref={resultsRef}
+                className="scroll-mt-24 space-y-4 md:scroll-mt-0"
+              >
                 {roast ? (
                   <RoastCard roast={roast} originalHook={roastOriginalHook} />
                 ) : null}
@@ -457,17 +509,17 @@ function App() {
                     roast={roast ?? undefined}
                   />
                 ) : null}
-              </>
+              </div>
             ) : (
               <div className="flex flex-col items-center justify-center h-64 text-center">
-                <div className="w-16 h-16 bg-gradient-to-tr from-rose-500/10 to-orange-500/10 rounded-2xl flex items-center justify-center mb-4">
-                  <Scissors className="w-8 h-8 text-rose-500" />
+                <div className="w-16 h-16 bg-gradient-to-tr from-red/10 to-amber/10 rounded-2xl flex items-center justify-center mb-4">
+                  <Scissors className="w-8 h-8 text-red" />
                 </div>
-                <h3 className="text-xl font-bold text-slate-100 mb-2">
+                <h3 className="text-xl font-bold text-primary mb-2">
                   Ready to cut
                 </h3>
-                <p className="text-slate-400 max-w-md">
-                  Paste your script on the left or choose a template to start
+                <p className="text-muted max-w-md">
+                  Paste your script on the left or select a template from the bottom left to start
                   generating high-retention hooks.
                 </p>
               </div>
@@ -475,6 +527,17 @@ function App() {
           </section>
         </section>
       </div>
+
+      <TemplateTrigger onClick={() => setIsTemplateSheetOpen(true)} />
+      
+      <TemplateSheet 
+        isOpen={isTemplateSheetOpen}
+        onClose={() => setIsTemplateSheetOpen(false)}
+        onSelect={selectTemplate}
+        disabled={isLoading}
+      />
+
+      <BackToTop />
 
       <HistoryDrawer
         isOpen={isHistoryOpen}
