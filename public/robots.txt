@@ -1,4 +1,5 @@
 User-agent: *
 Allow: /
 
+# TODO: update when hooklab.ai domain is live
 Sitemap: https://virality-ai.example.com/sitemap.xml
