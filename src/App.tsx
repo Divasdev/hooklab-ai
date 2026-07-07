@@ -1,3 +1,4 @@
+import { Analytics } from '@vercel/analytics/react';
 import { Clock3, Flame, Scissors } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
@@ -547,6 +548,7 @@ function App() {
         onDelete={deleteEntry}
         onClear={clearEntries}
       />
+      <Analytics />
     </main>
   );
 }
