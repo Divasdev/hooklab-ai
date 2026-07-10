@@ -76,7 +76,7 @@ export function TemplateSheet({
             type="button"
             onClick={onClose}
             aria-label="Close templates"
-            className="grid h-10 w-10 place-items-center rounded-[4px] border border-white/10 text-muted transition-colors hover:border-cyan/50 hover:text-cyan focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan"
+            className="grid h-11 w-11 place-items-center rounded-[4px] border border-white/10 text-muted transition-colors hover:border-cyan/50 hover:text-cyan focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"
           >
             <X size={18} />
           </button>

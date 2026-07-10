@@ -34,11 +34,10 @@ export function TemplateTrigger({ onClick }: TemplateTriggerProps) {
   }, []);
 
   return (
-    // TODO: adjust bottom positioning to 88px when mobile bottom nav ships in Phase 2
     <button
       type="button"
       onClick={onClick}
-      className={`fixed bottom-6 left-6 z-40 flex h-12 items-center gap-2 rounded-full border border-amber/40 bg-surface-elevated px-5 text-sm font-medium text-primary shadow-panel transition-all hover:border-amber/80 hover:bg-surface-elevated/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan md:h-14 md:text-base ${
+      className={`fixed bottom-[88px] left-6 z-30 flex h-12 items-center gap-2 rounded-full border border-amber/40 bg-surface-elevated px-5 text-sm font-medium text-primary shadow-panel transition-all hover:border-amber/80 hover:bg-surface-elevated/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber md:bottom-6 md:h-14 md:text-base ${
         shouldPulse ? 'animate-triggerPulse' : ''
       }`}
     >

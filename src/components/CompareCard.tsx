@@ -27,7 +27,7 @@ function CollapsibleSection({
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className="flex w-full items-center justify-between gap-3 border-b border-white/5 bg-black/20 px-6 py-4 text-left transition-colors hover:bg-black/30"
+        className="flex min-h-11 w-full items-center justify-between gap-3 border-b border-white/5 bg-black/20 px-6 py-4 text-left transition-colors hover:bg-black/30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-amber"
       >
         <h3 className="font-mono text-xs uppercase tracking-[0.15em] text-muted">
           {title}
@@ -139,7 +139,7 @@ export function CompareCard({ compare, hookA, hookB }: CompareCardProps) {
             onClick={() => {
               void copyToClipboard();
             }}
-            className="flex items-center gap-2 rounded text-xs font-semibold text-cyan/70 transition-colors hover:text-cyan"
+            className="flex min-h-11 items-center gap-2 rounded px-2 text-xs font-semibold text-cyan/70 transition-colors hover:text-cyan focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"
           >
             {copied ? <Check size={14} /> : <Copy size={14} />}
             {copied ? 'Copied!' : 'Copy'}

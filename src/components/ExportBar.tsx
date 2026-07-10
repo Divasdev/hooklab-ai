@@ -61,7 +61,7 @@ export function ExportBar({ hooks, request, roast, compare }: ExportBarProps) {
         onClick={() => {
           void copyAll();
         }}
-        className="rounded-[4px] border border-white/10 px-3 py-2 font-mono text-[11px] uppercase tracking-[0.1em] text-muted transition-colors hover:border-cyan/60 hover:text-cyan focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan"
+        className="min-h-11 rounded-[4px] border border-white/10 px-3 py-2 font-mono text-[11px] uppercase tracking-[0.1em] text-muted transition-colors hover:border-cyan/60 hover:text-cyan focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"
       >
         {copied ? 'Copied ✓' : compare ? 'Copy Improved Hook' : 'Copy All'}
       </button>
@@ -69,7 +69,7 @@ export function ExportBar({ hooks, request, roast, compare }: ExportBarProps) {
         <button
           type="button"
           onClick={downloadCsv}
-          className="rounded-[4px] border border-white/10 px-3 py-2 font-mono text-[11px] uppercase tracking-[0.1em] text-muted transition-colors hover:border-cyan/60 hover:text-cyan focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan"
+          className="min-h-11 rounded-[4px] border border-white/10 px-3 py-2 font-mono text-[11px] uppercase tracking-[0.1em] text-muted transition-colors hover:border-cyan/60 hover:text-cyan focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"
         >
           Download CSV
         </button>
@@ -77,7 +77,7 @@ export function ExportBar({ hooks, request, roast, compare }: ExportBarProps) {
       <button
         type="button"
         onClick={downloadNotes}
-        className="rounded-[4px] border border-white/10 px-3 py-2 font-mono text-[11px] uppercase tracking-[0.1em] text-muted transition-colors hover:border-cyan/60 hover:text-cyan focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan"
+        className="min-h-11 rounded-[4px] border border-white/10 px-3 py-2 font-mono text-[11px] uppercase tracking-[0.1em] text-muted transition-colors hover:border-cyan/60 hover:text-cyan focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"
       >
         Export as Script Notes
       </button>

@@ -89,7 +89,7 @@ export function HistoryDrawer({
             type="button"
             onClick={onClose}
             aria-label="Close history"
-            className="grid h-10 w-10 place-items-center rounded-[4px] border border-white/10 text-muted transition-colors hover:text-cyan focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan"
+            className="grid h-11 w-11 place-items-center rounded-[4px] border border-white/10 text-muted transition-colors hover:text-cyan focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"
           >
             <X size={18} />
           </button>
@@ -109,7 +109,7 @@ export function HistoryDrawer({
                       onRestore(entry);
                       onClose();
                     }}
-                    className="text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan"
+                    className="min-h-11 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"
                   >
                     <div className="flex items-center gap-2">
                       <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted">
@@ -138,7 +138,7 @@ export function HistoryDrawer({
                     type="button"
                     onClick={() => onDelete(entry.id)}
                     aria-label="Delete history entry"
-                    className="grid h-9 w-9 place-items-center rounded-[4px] border border-white/10 text-muted transition-colors hover:border-amber/60 hover:text-amber focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan"
+                    className="grid h-11 w-11 place-items-center rounded-[4px] border border-white/10 text-muted transition-colors hover:border-amber/60 hover:text-amber focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"
                   >
                     <Trash2 size={15} />
                   </button>
@@ -157,7 +157,7 @@ export function HistoryDrawer({
             type="button"
             disabled={entries.length === 0}
             onClick={onClear}
-            className="w-full rounded-[4px] border border-white/10 px-3 py-2 font-mono text-[11px] uppercase tracking-[0.12em] text-muted transition-colors hover:border-amber/60 hover:text-amber focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan disabled:cursor-not-allowed disabled:opacity-50"
+            className="min-h-11 w-full rounded-[4px] border border-white/10 px-3 py-2 font-mono text-[11px] uppercase tracking-[0.12em] text-muted transition-colors hover:border-amber/60 hover:text-amber focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber disabled:cursor-not-allowed disabled:opacity-50"
           >
             Clear All
           </button>

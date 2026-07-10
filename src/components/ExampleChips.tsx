@@ -68,7 +68,7 @@ export function ExampleChips({
               onLoadScript(chip.script);
             }
           }}
-          className="rounded-full border border-white/10 px-3 py-1 font-mono text-[11px] text-muted transition-colors hover:border-amber/50 hover:text-amber focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan"
+          className="min-h-11 rounded-full border border-white/10 px-3 py-2 font-mono text-[11px] text-muted transition-colors hover:border-amber/50 hover:text-amber focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"
         >
           {chip.label}
         </button>

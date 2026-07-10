@@ -1,7 +1,8 @@
-import { Clock3, Flame, Scissors } from 'lucide-react';
+import { Clock3, Flame, Moon, Scissors, Sun } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { BackToTop } from './components/BackToTop';
+import { BottomTabBar } from './components/BottomTabBar';
 import { ComparisonSection } from './components/ComparisonSection';
 import { CompareCard } from './components/CompareCard';
 import { ControlsPanel } from './components/ControlsPanel';
@@ -40,6 +41,7 @@ import type {
 } from './types/hooks';
 
 const skeletonItems = Array.from({ length: 10 }, (_, index) => index);
+type ThemePreference = 'default' | 'night';
 
 function App() {
   const [script, setScript] = useState('');
@@ -70,6 +72,9 @@ function App() {
   >(null);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isTemplateSheetOpen, setIsTemplateSheetOpen] = useState(false);
+  const [themePreference, setThemePreference] = useState<ThemePreference>(() =>
+    document.documentElement.dataset.theme === 'night' ? 'night' : 'default',
+  );
   const resultsRef = useRef<HTMLDivElement>(null);
   const { entries, saveEntry, deleteEntry, clearEntries } = useHistory();
 
@@ -137,6 +142,14 @@ function App() {
 
     return () => window.cancelAnimationFrame(frameId);
   }, [compareResult, hooks.length, isLoading, successfulResultId]);
+
+  useEffect(() => {
+    if (themePreference === 'night') {
+      document.documentElement.dataset.theme = 'night';
+    } else {
+      delete document.documentElement.dataset.theme;
+    }
+  }, [themePreference]);
 
   const handleError = (caughtError: unknown): void => {
     if (caughtError instanceof HookLabApiError) {
@@ -310,14 +323,42 @@ function App() {
     setInputError(null);
   };
 
+  const toggleThemePreference = (): void => {
+    setThemePreference((currentPreference) => {
+      const nextPreference =
+        currentPreference === 'night' ? 'default' : 'night';
+      localStorage.setItem('hooklab_theme_preference', nextPreference);
+      return nextPreference;
+    });
+  };
+
   return (
     <main className="min-h-screen bg-bg text-primary">
-      <div className="mx-auto flex min-h-screen w-full max-w-[1720px] flex-col px-4 py-5 sm:px-6 lg:px-8">
+      <div className="mx-auto flex min-h-screen w-full max-w-[1720px] flex-col px-4 pb-[88px] pt-5 sm:px-6 md:py-5 lg:px-8">
         <header className="grid gap-6 border-b border-border pb-6 lg:grid-cols-[1fr_auto_auto] lg:items-end">
           <div>
-            <p className="mb-3 font-mono text-xs uppercase tracking-[0.22em] text-amber">
-              00:00 HookLab.AI
-            </p>
+            <div className="mb-3 flex items-center gap-3">
+              <p className="font-mono text-xs uppercase tracking-[0.22em] text-amber">
+                00:00 HookLab.AI
+              </p>
+              <button
+                type="button"
+                onClick={toggleThemePreference}
+                aria-label={
+                  themePreference === 'night'
+                    ? 'Use default theme'
+                    : 'Use night theme'
+                }
+                aria-pressed={themePreference === 'night'}
+                className="grid h-11 w-11 place-items-center rounded-[4px] border border-white/10 text-muted transition-colors hover:border-amber/50 hover:text-amber focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"
+              >
+                {themePreference === 'night' ? (
+                  <Sun size={18} aria-hidden="true" />
+                ) : (
+                  <Moon size={18} aria-hidden="true" />
+                )}
+              </button>
+            </div>
             <h1 className="max-w-4xl font-display text-[clamp(2.75rem,8vw,6.75rem)] font-semibold leading-[0.9] tracking-normal">
               Cut the first few seconds before the edit.
             </h1>
@@ -339,13 +380,13 @@ function App() {
         <section className="grid flex-1 gap-6 py-6 xl:grid-cols-[minmax(380px,0.82fr)_minmax(0,1.18fr)]">
           <div className="space-y-5 xl:sticky xl:top-6 xl:self-start">
             <form
-              className="space-y-5"
+              className="space-y-4 md:space-y-5"
               onSubmit={(event) => {
                 event.preventDefault();
                 void cutHooks();
               }}
             >
-              <div className="sticky top-0 z-40 -mx-4 bg-bg px-4 py-2 border-b border-border md:static md:mx-0 md:px-0 md:py-0 md:bg-transparent md:border-b-0">
+              <div className="hidden md:block">
                 <ModeToggle
                   mode={mode}
                   disabled={isLoading}
@@ -360,9 +401,23 @@ function App() {
                 ) : null}
                 <ExampleChips
                   mode={mode}
-                  onLoadScript={(s) => { setScript(s); }}
-                  onLoadCompare={(a, b) => { setScript(a); setHookB(b); }}
+                  onLoadScript={(s) => {
+                    setScript(s);
+                  }}
+                  onLoadCompare={(a, b) => {
+                    setScript(a);
+                    setHookB(b);
+                  }}
                 />
+                {mode === 'generate' ? (
+                  <button
+                    type="button"
+                    onClick={() => handleModeChange('roast')}
+                    className="mb-3 inline-flex min-h-11 items-center rounded-[4px] text-left font-mono text-xs text-muted transition-colors hover:text-amber focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"
+                  >
+                    Already have a hook? Try Roast instead -&gt;
+                  </button>
+                ) : null}
                 <ScriptInput
                   value={script}
                   onChange={setScript}
@@ -378,28 +433,10 @@ function App() {
                   </p>
                 ) : null}
               </div>
-              <PlatformSelector
-                selectedPlatform={platform}
-                onChange={setPlatform}
-                disabled={isLoading}
-              />
-              <ControlsPanel
-                tone={tone}
-                audience={audience}
-                intensity={intensity}
-                language={language}
-                hookWindow={hookWindow}
-                disabled={isLoading}
-                onToneChange={setTone}
-                onAudienceChange={setAudience}
-                onIntensityChange={setIntensity}
-                onLanguageChange={setLanguage}
-                onHookWindowChange={setHookWindow}
-              />
               <button
                 type="submit"
                 disabled={!canSubmit}
-                className={`inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-md px-5 py-3 font-display text-base font-semibold text-bg transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-muted sm:w-auto ${
+                className={`inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-md px-5 py-3 font-display text-base font-semibold text-bg transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-muted sm:w-auto ${
                   mode === 'roast'
                     ? 'bg-red hover:brightness-110'
                     : mode === 'compare'
@@ -424,6 +461,24 @@ function App() {
                   </>
                 )}
               </button>
+              <PlatformSelector
+                selectedPlatform={platform}
+                onChange={setPlatform}
+                disabled={isLoading}
+              />
+              <ControlsPanel
+                tone={tone}
+                audience={audience}
+                intensity={intensity}
+                language={language}
+                hookWindow={hookWindow}
+                disabled={isLoading}
+                onToneChange={setTone}
+                onAudienceChange={setAudience}
+                onIntensityChange={setIntensity}
+                onLanguageChange={setLanguage}
+                onHookWindowChange={setHookWindow}
+              />
             </form>
 
             <ComparisonSection />
@@ -528,9 +583,15 @@ function App() {
         </section>
       </div>
 
+      <BottomTabBar
+        mode={mode}
+        disabled={isLoading}
+        onChange={handleModeChange}
+      />
+
       <TemplateTrigger onClick={() => setIsTemplateSheetOpen(true)} />
-      
-      <TemplateSheet 
+
+      <TemplateSheet
         isOpen={isTemplateSheetOpen}
         onClose={() => setIsTemplateSheetOpen(false)}
         onSelect={selectTemplate}

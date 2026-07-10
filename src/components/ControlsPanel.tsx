@@ -57,7 +57,7 @@ function SegmentGroup<TValue extends string | number>({
               type="button"
               aria-pressed={isSelected}
               onClick={() => onChange(value)}
-              className={`min-h-9 rounded-[4px] px-2 py-1.5 font-mono text-[11px] font-semibold uppercase tracking-[0.08em] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan disabled:cursor-not-allowed disabled:opacity-60 ${
+              className={`min-h-11 rounded-[4px] px-2 py-2 font-mono text-[11px] font-semibold uppercase tracking-[0.08em] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber disabled:cursor-not-allowed disabled:opacity-60 ${
                 isSelected
                   ? 'bg-amber text-bg shadow-amber'
                   : 'text-muted hover:bg-white/5 hover:text-cyan'

@@ -82,7 +82,7 @@ export function ComparisonSection() {
           className="relative flex flex-col rounded-md border border-white/10 bg-surface p-5 shadow-panel"
           style={{
             boxShadow:
-              '0 0 0 1.5px var(--accent-amber), 0 0 8px rgba(217,154,43,0.08)',
+              '0 0 0 1.5px var(--accent-amber), var(--shadow-amber-glow)',
           }}
         >
           <div className="mb-5 flex items-start justify-between gap-4">
@@ -103,7 +103,7 @@ export function ComparisonSection() {
                 void copyHook();
               }}
               aria-label={copied ? 'Hook copied' : 'Copy hook'}
-              className="grid h-10 w-10 shrink-0 place-items-center rounded-[4px] border border-white/10 text-muted transition-colors hover:border-cyan/50 hover:text-cyan focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan"
+              className="grid h-11 w-11 shrink-0 place-items-center rounded-[4px] border border-white/10 text-muted transition-colors hover:border-cyan/50 hover:text-cyan focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"
             >
               {copied ? <Check size={18} /> : <Copy size={18} />}
             </button>

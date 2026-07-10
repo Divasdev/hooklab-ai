@@ -22,9 +22,9 @@ const config: Config = {
         mono: ['IBM Plex Mono', 'ui-monospace', 'SFMono-Regular', 'monospace'],
       },
       boxShadow: {
-        panel: '0 18px 54px rgba(0, 0, 0, 0.3)',
-        cyan: '0 0 12px rgba(63, 188, 203, 0.08)',
-        amber: '0 0 12px rgba(217, 154, 43, 0.08)',
+        panel: 'var(--shadow-panel)',
+        cyan: 'var(--shadow-cyan)',
+        amber: 'var(--shadow-amber)',
       },
       keyframes: {
         cardIn: {
@@ -40,8 +40,14 @@ const config: Config = {
           '50%': { opacity: '0.82' },
         },
         triggerPulse: {
-          '0%, 100%': { transform: 'scale(1)', boxShadow: '0 0 12px rgba(217, 154, 43, 0.08)' },
-          '50%': { transform: 'scale(1.04)', boxShadow: '0 0 24px rgba(217, 154, 43, 0.4)' },
+          '0%, 100%': {
+            transform: 'scale(1)',
+            boxShadow: 'var(--shadow-trigger-idle)',
+          },
+          '50%': {
+            transform: 'scale(1.04)',
+            boxShadow: 'var(--shadow-trigger-peak)',
+          },
         },
       },
       animation: {

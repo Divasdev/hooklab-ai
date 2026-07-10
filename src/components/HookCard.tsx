@@ -59,7 +59,7 @@ export function HookCard({
   const cardStyle = hook.best_pick
     ? {
         boxShadow:
-          '0 0 0 1.5px var(--accent-amber), 0 0 8px rgba(217,154,43,0.08)',
+          '0 0 0 1.5px var(--accent-amber), var(--shadow-amber-glow)',
       }
     : undefined;
 
@@ -88,7 +88,7 @@ export function HookCard({
             void copyHook();
           }}
           aria-label={copied ? 'Hook copied' : 'Copy hook'}
-          className="grid h-10 w-10 shrink-0 place-items-center rounded-[4px] border border-white/10 text-muted transition-colors hover:border-cyan/50 hover:text-cyan focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan"
+          className="grid h-11 w-11 shrink-0 place-items-center rounded-[4px] border border-white/10 text-muted transition-colors hover:border-cyan/50 hover:text-cyan focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"
         >
           {copied ? <Check size={18} /> : <Copy size={18} />}
         </button>
@@ -121,7 +121,7 @@ export function HookCard({
             <button
               type="button"
               onClick={onUndo}
-              className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.1em] text-amber transition-colors hover:text-cyan focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan"
+              className="inline-flex min-h-11 items-center gap-1 font-mono text-[10px] uppercase tracking-[0.1em] text-amber transition-colors hover:text-cyan focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"
             >
               <RotateCcw size={12} />
               Undo

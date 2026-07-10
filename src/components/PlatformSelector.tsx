@@ -26,7 +26,7 @@ export function PlatformSelector({
               type="button"
               aria-pressed={isSelected}
               onClick={() => onChange(platform)}
-              className={`min-h-11 rounded-[4px] px-3 py-2 text-sm font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan disabled:cursor-not-allowed disabled:opacity-60 ${
+              className={`min-h-11 rounded-[4px] px-3 py-2 text-sm font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber disabled:cursor-not-allowed disabled:opacity-60 ${
                 isSelected
                   ? 'bg-amber text-bg shadow-amber'
                   : 'text-primary hover:bg-white/5 hover:text-cyan'
