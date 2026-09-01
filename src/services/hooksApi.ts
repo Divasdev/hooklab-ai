@@ -1,6 +1,8 @@
 import type {
   GenerateHooksRequest,
   GenerateHooksResponse,
+  ExpandHookRequest,
+  ExpandHookResponse,
   HookResult,
   HookScores,
   RewriteHookRequest,
@@ -124,6 +126,29 @@ const isCompareHooksResponse = (
   );
 };
 
+const isExpandHookResponse = (value: unknown): value is ExpandHookResponse => {
+  if (!isRecord(value) || !isRecord(value.outline)) {
+    return false;
+  }
+
+  const outline = value.outline;
+
+  return (
+    typeof outline.hook_recap === 'string' &&
+    Array.isArray(outline.beats) &&
+    outline.beats.length >= 4 &&
+    outline.beats.length <= 6 &&
+    outline.beats.every(
+      (beat: unknown) =>
+        isRecord(beat) &&
+        typeof beat.label === 'string' &&
+        typeof beat.duration_hint === 'string' &&
+        typeof beat.description === 'string',
+    ) &&
+    typeof outline.cta_suggestion === 'string'
+  );
+};
+
 const parseGenerateHooksResponse = (value: unknown): GenerateHooksResponse => {
   if (!isRecord(value)) {
     throw new Error('Invalid response shape.');
@@ -223,6 +248,31 @@ export const rewriteHook = async (
   }
 
   if (!isRewriteHookResponse(payload)) {
+    throw new HookLabApiError(
+      'Something went wrong on our end. Try again.',
+      500,
+    );
+  }
+
+  return payload;
+};
+
+export const expandHook = async (
+  request: ExpandHookRequest,
+): Promise<ExpandHookResponse> => {
+  const response = await fetch('/api/expand-hook', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  });
+
+  const payload = await readJson(response);
+
+  if (!response.ok) {
+    throwApiError(response.status, payload);
+  }
+
+  if (!isExpandHookResponse(payload)) {
     throw new HookLabApiError(
       'Something went wrong on our end. Try again.',
       500,

@@ -120,6 +120,8 @@ const stripJsonFences = (text: string): string => {
   return cleaned.trim();
 };
 
+export const extractJSON = stripJsonFences;
+
 const normalizeScore = (value: unknown): number | null => {
   if (typeof value !== 'number' || !Number.isFinite(value)) {
     return null;
@@ -861,7 +863,7 @@ const extractGeminiText = (
   return text.length > 0 ? text : null;
 };
 
-class GeminiApiError extends Error {
+export class GeminiApiError extends Error {
   constructor(
     public readonly status: number,
     message: string,
@@ -942,14 +944,14 @@ const callGemini = async (
   return text;
 };
 
-class AllKeysExhaustedError extends Error {
+export class AllKeysExhaustedError extends Error {
   constructor() {
     super('All API keys exhausted');
     this.name = 'AllKeysExhaustedError';
   }
 }
 
-const callGeminiWithRotation = async (
+export const callGeminiWithRotation = async (
   apiKeys: string[],
   model: string,
   systemPrompt: string,

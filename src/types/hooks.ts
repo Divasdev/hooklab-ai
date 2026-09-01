@@ -149,6 +149,31 @@ export interface RewriteHookResponse {
   scores: HookScores;
 }
 
+export interface ScriptOutlineBeat {
+  label: string;
+  duration_hint: string;
+  description: string;
+}
+
+export interface ScriptOutline {
+  hook_recap: string;
+  beats: ScriptOutlineBeat[];
+  cta_suggestion: string;
+}
+
+export interface ExpandHookRequest {
+  hook: string;
+  framework: string;
+  platform: Platform;
+  originalScript: string;
+  tone: Tone;
+  audience: Audience;
+}
+
+export interface ExpandHookResponse {
+  outline: ScriptOutline;
+}
+
 export interface HistoryEntry extends GenerateHooksRequest {
   id: string;
   timestamp: number;

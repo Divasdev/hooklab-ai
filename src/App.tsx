@@ -14,12 +14,14 @@ import { ModeToggle } from './components/ModeToggle';
 import { PlatformSelector } from './components/PlatformSelector';
 import { RoastCard } from './components/RoastCard';
 import { ScriptInput } from './components/ScriptInput';
+import { ScriptOutline } from './components/ScriptOutline';
 import { SkeletonCard } from './components/SkeletonCard';
 import { TemplateSheet } from './components/TemplateSheet';
 import { TemplateTrigger } from './components/TemplateTrigger';
 import { type ScriptTemplate } from './data/templates';
 import { useHistory } from './hooks/useHistory';
 import {
+  expandHook,
   generateHooks,
   HookLabApiError,
   rewriteHook,
@@ -38,6 +40,7 @@ import type {
   RoastCritique,
   Tone,
   CompareHooksResponse,
+  ScriptOutline as ScriptOutlineData,
 } from './types/hooks';
 
 const skeletonItems = Array.from({ length: 10 }, (_, index) => index);
@@ -70,6 +73,11 @@ function App() {
   const [rewritingFramework, setRewritingFramework] = useState<
     HookResult['framework'] | null
   >(null);
+  const [expandingKey, setExpandingKey] = useState<string | null>(null);
+  const [expandErrors, setExpandErrors] = useState<Record<string, string>>({});
+  const [scriptOutline, setScriptOutline] =
+    useState<ScriptOutlineData | null>(null);
+  const [isOutlineOpen, setIsOutlineOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isTemplateSheetOpen, setIsTemplateSheetOpen] = useState(false);
   const [themePreference, setThemePreference] = useState<ThemePreference>(() =>
@@ -177,6 +185,8 @@ function App() {
     setInputError(null);
     setSurfaceError(null);
     setPreviousHooks({});
+    setExpandErrors({});
+    setIsOutlineOpen(false);
 
     try {
       const response = await generateHooks(request);
@@ -256,6 +266,46 @@ function App() {
     }
   };
 
+  const expandSelectedHook = async (
+    key: string,
+    hookText: string,
+    framework: string,
+    originalScript: string,
+  ): Promise<void> => {
+    setExpandingKey(key);
+    setExpandErrors((currentErrors) => {
+      const nextErrors = { ...currentErrors };
+      delete nextErrors[key];
+      return nextErrors;
+    });
+
+    try {
+      const response = await expandHook({
+        hook: hookText,
+        framework,
+        platform,
+        originalScript,
+        tone,
+        audience,
+      });
+
+      setScriptOutline(response.outline);
+      setIsOutlineOpen(true);
+    } catch (caughtError) {
+      const message =
+        caughtError instanceof HookLabApiError
+          ? caughtError.message
+          : 'Something went wrong on our end. Try again.';
+
+      setExpandErrors((currentErrors) => ({
+        ...currentErrors,
+        [key]: message,
+      }));
+    } finally {
+      setExpandingKey(null);
+    }
+  };
+
   const undoRewrite = (hook: HookResult): void => {
     const previousHook = previousHooks[hook.framework];
 
@@ -304,6 +354,7 @@ function App() {
     setInputError(null);
     setSurfaceError(null);
     setPreviousHooks({});
+    setExpandErrors({});
   };
 
   const selectTemplate = (template: ScriptTemplate): void => {
@@ -524,7 +575,25 @@ function App() {
                 ref={resultsRef}
                 className="scroll-mt-24 space-y-4 md:scroll-mt-0"
               >
-                <CompareCard compare={compareResult} hookA={script} hookB={hookB} />
+                <CompareCard
+                  compare={compareResult}
+                  hookA={script}
+                  hookB={hookB}
+                  isExpandingWinner={expandingKey === 'compare-winner'}
+                  expandError={expandErrors['compare-winner']}
+                  onExpandWinner={() => {
+                    const winnerHook =
+                      compareResult.winner === 'A' ? script : hookB;
+                    const originalContext = `Hook A: ${script}\n\nHook B: ${hookB}`;
+
+                    void expandSelectedHook(
+                      'compare-winner',
+                      winnerHook,
+                      `COMPARE WINNER ${compareResult.winner}`,
+                      originalContext,
+                    );
+                  }}
+                />
                 {currentRequest ? (
                   <ExportBar
                     hooks={[]}
@@ -550,10 +619,20 @@ function App() {
                       platform={platform}
                       canUndo={Boolean(previousHooks[hook.framework])}
                       isRewriting={rewritingFramework === hook.framework}
+                      isExpanding={expandingKey === hook.framework}
+                      expandError={expandErrors[hook.framework]}
                       onRewrite={(direction) => {
                         void rewriteCard(hook, direction);
                       }}
                       onUndo={() => undoRewrite(hook)}
+                      onExpand={() => {
+                        void expandSelectedHook(
+                          hook.framework,
+                          hook.text,
+                          hook.framework,
+                          currentRequest?.script ?? script,
+                        );
+                      }}
                     />
                   ))}
                 </div>
@@ -599,6 +678,12 @@ function App() {
       />
 
       <BackToTop />
+
+      <ScriptOutline
+        isOpen={isOutlineOpen}
+        outline={scriptOutline}
+        onClose={() => setIsOutlineOpen(false)}
+      />
 
       <HistoryDrawer
         isOpen={isHistoryOpen}

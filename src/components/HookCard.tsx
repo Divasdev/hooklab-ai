@@ -11,8 +11,11 @@ interface HookCardProps {
   platform: Platform;
   canUndo: boolean;
   isRewriting: boolean;
+  isExpanding: boolean;
+  expandError?: string;
   onRewrite: (direction: RewriteDirection) => void;
   onUndo: () => void;
+  onExpand: () => void;
 }
 
 export function HookCard({
@@ -21,8 +24,11 @@ export function HookCard({
   platform,
   canUndo,
   isRewriting,
+  isExpanding,
+  expandError,
   onRewrite,
   onUndo,
+  onExpand,
 }: HookCardProps) {
   const [copied, setCopied] = useState(false);
   const [contentVisible, setContentVisible] = useState(true);
@@ -129,6 +135,21 @@ export function HookCard({
           ) : null}
         </div>
         <RewriteChips disabled={isRewriting} onRewrite={onRewrite} />
+        <div className="mt-3">
+          <button
+            type="button"
+            disabled={isExpanding}
+            onClick={onExpand}
+            className="min-h-11 rounded-[4px] border border-white/10 px-2.5 py-2 font-mono text-[10px] uppercase tracking-[0.08em] text-muted transition-colors hover:border-cyan/70 hover:text-cyan focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber disabled:cursor-wait disabled:opacity-60"
+          >
+            {isExpanding ? 'Building outline...' : 'Expand into outline →'}
+          </button>
+          {expandError ? (
+            <p className="mt-2 font-mono text-[11px] leading-5 text-amber">
+              {expandError}
+            </p>
+          ) : null}
+        </div>
       </div>
     </article>
   );

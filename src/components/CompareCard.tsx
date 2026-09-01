@@ -7,6 +7,9 @@ interface CompareCardProps {
   compare: CompareHooksResponse;
   hookA: string;
   hookB: string;
+  isExpandingWinner?: boolean;
+  expandError?: string;
+  onExpandWinner?: () => void;
 }
 
 interface CollapsibleSectionProps {
@@ -50,7 +53,14 @@ function CollapsibleSection({
   );
 }
 
-export function CompareCard({ compare, hookA, hookB }: CompareCardProps) {
+export function CompareCard({
+  compare,
+  hookA,
+  hookB,
+  isExpandingWinner = false,
+  expandError,
+  onExpandWinner,
+}: CompareCardProps) {
   const [copied, setCopied] = useState(false);
 
   const copyToClipboard = async () => {
@@ -85,6 +95,25 @@ export function CompareCard({ compare, hookA, hookB }: CompareCardProps) {
             {compare.confidence}% Confidence
           </div>
           <p className="max-w-md text-base text-primary/90">{compare.summary}</p>
+          {onExpandWinner ? (
+            <div className="mt-5">
+              <button
+                type="button"
+                disabled={isExpandingWinner}
+                onClick={onExpandWinner}
+                className="min-h-11 rounded-[4px] border border-white/10 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.08em] text-muted transition-colors hover:border-cyan/70 hover:text-cyan focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber disabled:cursor-wait disabled:opacity-60"
+              >
+                {isExpandingWinner
+                  ? 'Building outline...'
+                  : 'Expand into outline →'}
+              </button>
+              {expandError ? (
+                <p className="mt-2 font-mono text-[11px] leading-5 text-amber">
+                  {expandError}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       </CollapsibleSection>
 
