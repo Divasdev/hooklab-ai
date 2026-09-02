@@ -18,6 +18,7 @@ import { ScriptOutline } from './components/ScriptOutline';
 import { SkeletonCard } from './components/SkeletonCard';
 import { TemplateSheet } from './components/TemplateSheet';
 import { TemplateTrigger } from './components/TemplateTrigger';
+import { WordSwap } from './components/WordSwap';
 import { type ScriptTemplate } from './data/templates';
 import { useHistory } from './hooks/useHistory';
 import {
@@ -411,7 +412,12 @@ function App() {
               </button>
             </div>
             <h1 className="max-w-4xl font-display text-[clamp(2.75rem,8vw,6.75rem)] font-semibold leading-[0.9] tracking-normal">
-              Cut the first few seconds before the edit.
+              Cut the first few{' '}
+              <WordSwap
+                words={['seconds', 'hooks', 'frames', 'beats']}
+                className="text-amber"
+              />{' '}
+              before the edit.
             </h1>
           </div>
           <div className="max-w-sm border-l-2 border-cyan/50 pl-4 font-mono text-sm leading-6 text-muted">
