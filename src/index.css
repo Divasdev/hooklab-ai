@@ -16,12 +16,16 @@
   --accent-cyan: #3FBCCB;
   --accent-error: #EF6B6B;
   --shadow-panel: 0 18px 54px rgba(0, 0, 0, 0.3);
-  --shadow-cyan: 0 0 12px rgba(63, 188, 203, 0.08);
-  --shadow-amber: 0 0 12px rgba(217, 154, 43, 0.08);
-  --shadow-amber-glow: 0 0 8px rgba(217, 154, 43, 0.08);
-  --shadow-red-glow: 0 0 12px rgba(239, 107, 107, 0.04);
-  --shadow-trigger-idle: 0 0 12px rgba(217, 154, 43, 0.08);
-  --shadow-trigger-peak: 0 0 24px rgba(217, 154, 43, 0.4);
+  --shadow-cyan: 0 0 16px rgba(63, 188, 203, 0.12);
+  --shadow-amber: 0 0 16px rgba(217, 154, 43, 0.12);
+  --shadow-amber-glow: 0 0 12px rgba(217, 154, 43, 0.18);
+  --shadow-amber-vivid: 0 0 20px rgba(217, 154, 43, 0.25);
+  --shadow-red-glow: 0 0 16px rgba(239, 107, 107, 0.08);
+  --shadow-trigger-idle: 0 0 12px rgba(217, 154, 43, 0.12);
+  --shadow-trigger-peak: 0 0 28px rgba(217, 154, 43, 0.45);
+  --glow-amber-focus: 0 0 0 1px rgba(217, 154, 43, 0.4), 0 0 20px rgba(217, 154, 43, 0.12), 0 0 40px rgba(217, 154, 43, 0.06);
+  --glow-cyan-focus: 0 0 0 1px rgba(63, 188, 203, 0.4), 0 0 20px rgba(63, 188, 203, 0.12), 0 0 40px rgba(63, 188, 203, 0.06);
+  --glow-red-focus: 0 0 0 1px rgba(239, 107, 107, 0.4), 0 0 20px rgba(239, 107, 107, 0.1), 0 0 40px rgba(239, 107, 107, 0.05);
   color-scheme: dark;
   font-family: Inter, system-ui, sans-serif;
   background: var(--bg);
@@ -33,12 +37,16 @@
   --surface-elevated: #111318;
   --text-primary: #C9CBD1;
   --shadow-panel: 0 18px 54px rgba(0, 0, 0, 0.18);
-  --shadow-cyan: 0 0 12px rgba(63, 188, 203, 0.048);
-  --shadow-amber: 0 0 12px rgba(217, 154, 43, 0.048);
-  --shadow-amber-glow: 0 0 8px rgba(217, 154, 43, 0.048);
-  --shadow-red-glow: 0 0 12px rgba(239, 107, 107, 0.024);
-  --shadow-trigger-idle: 0 0 12px rgba(217, 154, 43, 0.048);
-  --shadow-trigger-peak: 0 0 24px rgba(217, 154, 43, 0.24);
+  --shadow-cyan: 0 0 14px rgba(63, 188, 203, 0.06);
+  --shadow-amber: 0 0 14px rgba(217, 154, 43, 0.06);
+  --shadow-amber-glow: 0 0 10px rgba(217, 154, 43, 0.08);
+  --shadow-amber-vivid: 0 0 16px rgba(217, 154, 43, 0.12);
+  --shadow-red-glow: 0 0 14px rgba(239, 107, 107, 0.04);
+  --shadow-trigger-idle: 0 0 12px rgba(217, 154, 43, 0.06);
+  --shadow-trigger-peak: 0 0 24px rgba(217, 154, 43, 0.28);
+  --glow-amber-focus: 0 0 0 1px rgba(217, 154, 43, 0.3), 0 0 16px rgba(217, 154, 43, 0.06), 0 0 32px rgba(217, 154, 43, 0.03);
+  --glow-cyan-focus: 0 0 0 1px rgba(63, 188, 203, 0.3), 0 0 16px rgba(63, 188, 203, 0.06), 0 0 32px rgba(63, 188, 203, 0.03);
+  --glow-red-focus: 0 0 0 1px rgba(239, 107, 107, 0.3), 0 0 16px rgba(239, 107, 107, 0.05), 0 0 32px rgba(239, 107, 107, 0.025);
 }
 
 * {
@@ -55,8 +63,8 @@ body {
   min-width: 320px;
   min-height: 100vh;
   background:
-    linear-gradient(rgba(255, 255, 255, 0.018) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.018) 1px, transparent 1px),
+    linear-gradient(rgba(255, 255, 255, 0.024) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.024) 1px, transparent 1px),
     var(--bg);
   background-size: 48px 48px;
   color: var(--text-primary);
@@ -82,6 +90,90 @@ span::selection {
   background: rgba(63, 188, 203, 0.24);
 }
 
+/* ─── Glowing Focus States ─── */
+
+textarea:focus {
+  box-shadow: var(--glow-amber-focus) !important;
+  transition: box-shadow 300ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+textarea.focus-cyan:focus,
+textarea[class*="border-t-cyan"]:focus {
+  box-shadow: var(--glow-cyan-focus) !important;
+}
+
+textarea[class*="border-t-red"]:focus {
+  box-shadow: var(--glow-red-focus) !important;
+}
+
+/* Interactive button glow on hover */
+button:not(:disabled):hover {
+  transition: box-shadow 250ms ease, border-color 250ms ease, color 250ms ease, transform 100ms;
+}
+
+/* ─── Word Swap Animation ─── */
+
+.word-swap-container {
+  display: inline-flex;
+  overflow: hidden;
+  vertical-align: baseline;
+  position: relative;
+}
+
+.word-swap-text {
+  display: inline-block;
+  transition: transform 320ms cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 320ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.word-swap-enter {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.word-swap-exit {
+  transform: translateY(-100%);
+  opacity: 0;
+}
+
+/* ─── Shimmer Skeleton Effect ─── */
+
+.shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.shimmer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.06) 40%,
+    rgba(255, 255, 255, 0.10) 50%,
+    rgba(255, 255, 255, 0.06) 60%,
+    transparent 100%
+  );
+  transform: translateX(-100%);
+  animation: shimmerSweep 1.8s ease-in-out infinite;
+}
+
+@keyframes shimmerSweep {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* ─── Animated Score Bars ─── */
+
+.score-bar-animated {
+  transition: width 800ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -90,5 +182,13 @@ span::selection {
     animation-iteration-count: 1 !important;
     scroll-behavior: auto !important;
     transition-duration: 0.001ms !important;
+  }
+
+  .shimmer::after {
+    animation: none;
+  }
+
+  .word-swap-text {
+    transition: none;
   }
 }
