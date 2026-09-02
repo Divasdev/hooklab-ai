@@ -25,19 +25,29 @@ const config: Config = {
         panel: 'var(--shadow-panel)',
         cyan: 'var(--shadow-cyan)',
         amber: 'var(--shadow-amber)',
+        'amber-vivid': 'var(--shadow-amber-vivid)',
       },
       keyframes: {
         cardIn: {
-          '0%': { opacity: '0', transform: 'translateY(14px)' },
-          '100%': { opacity: '1', transform: 'translateY(0)' },
+          '0%': {
+            opacity: '0',
+            transform: 'translateY(20px) scale(0.97)',
+            filter: 'blur(4px)',
+          },
+          '100%': {
+            opacity: '1',
+            transform: 'translateY(0) scale(1)',
+            filter: 'blur(0)',
+          },
         },
         drawLine: {
           '0%': { strokeDashoffset: '260' },
           '100%': { strokeDashoffset: '0' },
         },
-        skeletonPulse: {
-          '0%, 100%': { opacity: '0.42' },
-          '50%': { opacity: '0.82' },
+        skeletonShimmer: {
+          '0%': { opacity: '0.35' },
+          '50%': { opacity: '0.65' },
+          '100%': { opacity: '0.35' },
         },
         triggerPulse: {
           '0%, 100%': {
@@ -51,9 +61,9 @@ const config: Config = {
         },
       },
       animation: {
-        cardIn: 'cardIn 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both',
+        cardIn: 'cardIn 480ms cubic-bezier(0.16, 1, 0.3, 1) both',
         drawLine: 'drawLine 780ms cubic-bezier(0.22, 1, 0.36, 1) both',
-        skeletonPulse: 'skeletonPulse 1.45s ease-in-out infinite',
+        skeletonShimmer: 'skeletonShimmer 1.45s ease-in-out infinite',
         triggerPulse: 'triggerPulse 600ms ease-in-out 2',
       },
     },
