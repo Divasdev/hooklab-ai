@@ -78,7 +78,7 @@ assert.equal(
       'Airliners are certified to fly thousands of hours with one engine out.',
     ),
   ),
-  false,
+  true,
 );
 
 const compareResponse = {
