@@ -181,3 +181,9 @@ export interface HistoryEntry extends GenerateHooksRequest {
   roast?: RoastCritique;
   compare?: CompareHooksResponse;
 }
+
+export const exportFormats = ['json', 'csv', 'txt', 'markdown'] as const;
+export type ExportFormat = (typeof exportFormats)[number];
+
+export type HookMetricKey = 'curiosity' | 'clarity' | 'scroll_stop' | 'platform_fit';
+
