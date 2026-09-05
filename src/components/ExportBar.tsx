@@ -58,6 +58,8 @@ export function ExportBar({ hooks, request, roast, compare }: ExportBarProps) {
     <div className="mt-5 flex flex-wrap gap-2 border-t border-white/10 pt-4">
       <button
         type="button"
+        title="Copy all hooks to clipboard"
+        aria-label="Copy all generated hooks to clipboard"
         onClick={() => {
           void copyAll();
         }}
@@ -68,6 +70,8 @@ export function ExportBar({ hooks, request, roast, compare }: ExportBarProps) {
       {!compare ? (
         <button
           type="button"
+          title="Export hooks as spreadsheet CSV"
+          aria-label="Download hooks as CSV spreadsheet"
           onClick={downloadCsv}
           className="min-h-11 rounded-[4px] border border-white/10 px-3 py-2 font-mono text-[11px] uppercase tracking-[0.1em] text-muted transition-colors hover:border-cyan/60 hover:text-cyan focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"
         >
@@ -76,6 +80,8 @@ export function ExportBar({ hooks, request, roast, compare }: ExportBarProps) {
       ) : null}
       <button
         type="button"
+        title="Export full script notes with breakdowns"
+        aria-label="Export complete script notes"
         onClick={downloadNotes}
         className="min-h-11 rounded-[4px] border border-white/10 px-3 py-2 font-mono text-[11px] uppercase tracking-[0.1em] text-muted transition-colors hover:border-cyan/60 hover:text-cyan focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"
       >
