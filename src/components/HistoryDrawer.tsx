@@ -165,9 +165,14 @@ export function HistoryDrawer({
               ))}
             </div>
           ) : (
-            <p className="rounded-md border border-dashed border-white/10 p-5 font-mono text-sm text-muted">
-              Cuts you generate will appear here.
-            </p>
+            <div className="rounded-md border border-dashed border-white/10 p-6 text-center">
+              <p className="font-mono text-xs uppercase tracking-widest text-muted">
+                No saved generations yet
+              </p>
+              <p className="mt-1 font-mono text-[11px] text-muted/70">
+                Hooks and roasts you generate will automatically be saved here for quick restoration.
+              </p>
+            </div>
           )}
         </div>
 
