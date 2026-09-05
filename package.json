@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "preview": "vite preview --host 0.0.0.0",
     "test:relevance": "node --experimental-strip-types scripts/relevance.test.mjs",
+    "check": "node scripts/health-check.mjs",
     "format": "prettier --write ."
   },
   "dependencies": {
