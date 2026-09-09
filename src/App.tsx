@@ -1,9 +1,5 @@
 import { Clock3, Flame, Moon, Scissors, Sun } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
-
-import { useAuth } from './hooks/useAuth';
-import { supabase } from './lib/supabase';
 
 import { BackToTop } from './components/BackToTop';
 import { BottomTabBar } from './components/BottomTabBar';
@@ -85,41 +81,11 @@ function App() {
   const [isOutlineOpen, setIsOutlineOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isTemplateSheetOpen, setIsTemplateSheetOpen] = useState(false);
-  const { user } = useAuth();
-  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const userMenuRef = useRef<HTMLDivElement>(null);
   const [themePreference, setThemePreference] = useState<ThemePreference>(() =>
     document.documentElement.dataset.theme === 'night' ? 'night' : 'default',
   );
   const resultsRef = useRef<HTMLDivElement>(null);
   const { entries, saveEntry, deleteEntry, clearEntries } = useHistory();
-
-  useEffect(() => {
-    if (!isUserMenuOpen) return;
-
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        userMenuRef.current &&
-        !userMenuRef.current.contains(event.target as Node)
-      ) {
-        setIsUserMenuOpen(false);
-      }
-    };
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setIsUserMenuOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('keydown', handleKeyDown);
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [isUserMenuOpen]);
 
   const minLength = mode === 'roast' ? 5 : 20;
 
@@ -467,59 +433,6 @@ function App() {
             >
               <Clock3 size={19} />
             </button>
-
-            {!user ? (
-              <Link
-                to="/auth"
-                className="inline-flex h-11 items-center justify-center rounded-[4px] border border-white/10 px-3.5 font-mono text-xs uppercase tracking-wider text-muted transition-colors hover:border-amber/50 hover:text-amber focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"
-              >
-                Sign in
-              </Link>
-            ) : (
-              <div className="relative" ref={userMenuRef}>
-                <button
-                  type="button"
-                  onClick={() => setIsUserMenuOpen((prev) => !prev)}
-                  aria-label="User account menu"
-                  aria-expanded={isUserMenuOpen}
-                  className="grid h-11 w-11 place-items-center rounded-full border border-amber/40 bg-amber font-mono text-sm font-bold text-black transition-transform hover:scale-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"
-                >
-                  {(user.email?.[0] || 'U').toUpperCase()}
-                </button>
-
-                {isUserMenuOpen && (
-                  <div className="absolute right-0 top-full z-50 mt-2 w-48 rounded-[8px] border border-border bg-surface p-1.5 shadow-panel">
-                    <div className="border-b border-border/60 px-3 py-2">
-                      <p className="font-mono text-[10px] uppercase tracking-wider text-muted">
-                        Signed in as
-                      </p>
-                      <p className="truncate font-sans text-xs font-medium text-primary">
-                        {user.email}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsUserMenuOpen(false);
-                      }}
-                      className="flex w-full items-center gap-2 rounded-[4px] px-3 py-2 text-left font-sans text-xs text-secondary hover:bg-white/[0.04] hover:text-primary"
-                    >
-                      My Account
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsUserMenuOpen(false);
-                        void supabase.auth.signOut();
-                      }}
-                      className="flex w-full items-center gap-2 rounded-[4px] px-3 py-2 text-left font-sans text-xs text-accent-error hover:bg-white/[0.04]"
-                    >
-                      Sign out
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
           </div>
         </header>
 
