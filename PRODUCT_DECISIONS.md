@@ -20,7 +20,7 @@
 
 Use this filter before adding any new feature request to the roadmap.
 
-## Architecture Decision — Soft Auth (Non-Blocking)
-- **Zero Gating**: The app remains 100% functional without an account (generate, roast, compare all work without login).
-- **Value Proposition**: "Sign in to save your hook history across all your devices."
-- **Providers**: Google OAuth, Magic Link (hero friction-free option), and Email/Password fallback via Supabase.
+## Architecture Decision — Zero Gating (Local-First)
+- **Zero Gating**: The app is 100% functional with zero barriers to entry (generate, roast, compare, and history all work locally in the browser).
+- **History Storage**: LocalStorage-backed history with zero external database dependencies.
+
