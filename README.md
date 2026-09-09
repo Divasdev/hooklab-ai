@@ -37,18 +37,6 @@ Vercel is the easiest way to deploy this application because it natively support
 5. Vercel will automatically detect the Vite build settings (`npm run build`, `dist` output directory) and the Serverless Functions in the `/api` directory.
 6. Click **Deploy**.
 
-## Supabase Setup
-
-1. Create a project at supabase.com
-2. Go to Authentication → Providers → enable Google OAuth
-   (requires Google Cloud Console OAuth credentials)
-3. Go to Authentication → URL Configuration → add your 
-   Vercel URL to "Redirect URLs":
-   https://your-vercel-url.vercel.app/auth/callback
-4. Copy Project URL and Anon Key from Settings → API
-5. Add both as environment variables in Vercel dashboard:
-   VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY
-
 ### Option 2: Netlify (Frontend) + Render/Railway (Backend)
 
 If you prefer to decouple the frontend and backend, you must split the application. The current repository structure relies on Vercel Serverless Functions (`@vercel/node`), so deploying the `/api` directory natively on Render requires converting those handlers to a standard Express server.
