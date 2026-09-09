@@ -1,8 +1,6 @@
 import { Trash2, X } from 'lucide-react';
 import { useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
 
-import { useAuth } from '../hooks/useAuth';
 import type { HistoryEntry } from '../types/hooks';
 
 interface HistoryDrawerProps {
@@ -41,7 +39,6 @@ export function HistoryDrawer({
   onClear,
 }: HistoryDrawerProps) {
   const panelRef = useRef<HTMLDivElement>(null);
-  const { user } = useAuth();
 
   useEffect(() => {
     if (!isOpen) {
@@ -98,21 +95,7 @@ export function HistoryDrawer({
           </button>
         </div>
 
-        {!user && (
-          <Link
-            to="/auth"
-            onClick={onClose}
-            className="flex items-center justify-between border-b border-white/10 bg-surface-elevated px-5 py-3 text-xs text-text-secondary transition-colors hover:bg-white/[0.04]"
-          >
-            <span className="flex items-center gap-2">
-              <span aria-hidden="true">🔒</span>
-              <span>Sign in to sync your history across devices</span>
-            </span>
-            <span className="font-mono font-medium text-amber hover:underline">
-              →
-            </span>
-          </Link>
-        )}
+
 
         <div className="flex-1 overflow-y-auto p-4">
           {entries.length > 0 ? (
