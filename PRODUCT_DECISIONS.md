@@ -23,4 +23,6 @@ Use this filter before adding any new feature request to the roadmap.
 ## Architecture Decision — Zero Gating (Local-First)
 - **Zero Gating**: The app is 100% functional with zero barriers to entry (generate, roast, compare, and history all work locally in the browser).
 - **History Storage**: LocalStorage-backed history with zero external database dependencies.
+- **Client Privacy**: User scripts are processed strictly in ephemeral memory without persistent server-side logging.
+
 
