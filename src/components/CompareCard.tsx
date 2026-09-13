@@ -29,6 +29,7 @@ function CollapsibleSection({
     <div className="overflow-hidden rounded-xl border border-white/10 bg-surface">
       <button
         type="button"
+        aria-expanded={isOpen}
         onClick={() => setIsOpen((prev) => !prev)}
         className="flex min-h-11 w-full items-center justify-between gap-3 border-b border-white/5 bg-black/20 px-6 py-4 text-left transition-colors hover:bg-black/30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-amber"
       >
