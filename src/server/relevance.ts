@@ -74,6 +74,10 @@ const latinWordPattern = /[a-z0-9][a-z0-9'-]{2,}/gi;
 const normalize = (value: string): string => value.toLowerCase();
 
 export const extractTopicAnchors = (script: string): string[] => {
+  if (!script || typeof script !== 'string') {
+    return [];
+  }
+
   const matches = normalize(script).match(latinWordPattern) ?? [];
   const frequencies = new Map<string, number>();
 
