@@ -94,6 +94,11 @@ export function ScriptInput({
             : 'min-h-[188px] border-t-amber focus:border-t-amber md:min-h-[250px]'
         }`}
       />
+      {value.trim().length > 0 && (
+        <span className="mt-1 block text-right font-mono text-[11px] text-muted">
+          {value.trim().length} chars
+        </span>
+      )}
     </label>
   );
 }
