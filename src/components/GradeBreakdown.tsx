@@ -6,11 +6,32 @@ interface GradeBreakdownProps {
   scores: HookScores;
 }
 
-const scoreItems: Array<{ key: keyof HookScores; label: string }> = [
-  { key: 'curiosity', label: 'Curiosity' },
-  { key: 'clarity', label: 'Clarity' },
-  { key: 'scroll_stop', label: 'Scroll Stop' },
-  { key: 'platform_fit', label: 'Platform Fit' },
+const scoreItems: Array<{
+  key: keyof HookScores;
+  label: string;
+  explanation: string;
+}> = [
+  {
+    key: 'curiosity',
+    label: 'Curiosity',
+    explanation:
+      'How strongly the opening creates a question the viewer wants answered.',
+  },
+  {
+    key: 'clarity',
+    label: 'Clarity',
+    explanation: 'How quickly the viewer can understand the topic and promise.',
+  },
+  {
+    key: 'scroll_stop',
+    label: 'Scroll Stop',
+    explanation: 'How distinctive the opening feels in a fast-moving feed.',
+  },
+  {
+    key: 'platform_fit',
+    label: 'Platform Fit',
+    explanation: 'How well the wording and pacing suit the selected platform.',
+  },
 ];
 
 export function GradeBreakdown({ scores }: GradeBreakdownProps) {
@@ -55,8 +76,19 @@ export function GradeBreakdown({ scores }: GradeBreakdownProps) {
         return (
           <div key={item.key} className="space-y-1.5">
             <div className="flex items-center justify-between gap-2 font-mono text-[10px] uppercase tracking-[0.12em]">
-              <span className="text-muted">{item.label}</span>
-              <AnimatedNumber value={value} isRevealed={isRevealed} delay={index * 80} />
+              <span
+                className="text-muted"
+                tabIndex={0}
+                title={item.explanation}
+                aria-label={`${item.label}: ${item.explanation}`}
+              >
+                {item.label}
+              </span>
+              <AnimatedNumber
+                value={value}
+                isRevealed={isRevealed}
+                delay={index * 80}
+              />
             </div>
             <div className="h-1.5 overflow-hidden rounded-full bg-cyan/20">
               <div
@@ -70,6 +102,9 @@ export function GradeBreakdown({ scores }: GradeBreakdownProps) {
           </div>
         );
       })}
+      <p className="text-[11px] leading-5 text-muted sm:col-span-2">
+        AI estimates, not measured retention or a prediction of views.
+      </p>
     </div>
   );
 }

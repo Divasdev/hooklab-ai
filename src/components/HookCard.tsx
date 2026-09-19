@@ -1,9 +1,10 @@
-import { Check, Copy, RotateCcw } from 'lucide-react';
+import { RotateCcw } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 import type { HookResult, Platform, RewriteDirection } from '../types/hooks';
 import { GradeBreakdown } from './GradeBreakdown';
 import { RewriteChips } from './RewriteChips';
+import { HookActions } from './HookActions';
 
 interface HookCardProps {
   hook: HookResult;
@@ -16,6 +17,8 @@ interface HookCardProps {
   onRewrite: (direction: RewriteDirection) => void;
   onUndo: () => void;
   onExpand: () => void;
+  saved: boolean;
+  onSave: () => void;
 }
 
 export function HookCard({
@@ -29,20 +32,11 @@ export function HookCard({
   onRewrite,
   onUndo,
   onExpand,
+  saved,
+  onSave,
 }: HookCardProps) {
-  const [copied, setCopied] = useState(false);
   const [contentVisible, setContentVisible] = useState(true);
   const previousTextRef = useRef(hook.text);
-
-  useEffect(() => {
-    if (!copied) {
-      return;
-    }
-
-    const timeout = window.setTimeout(() => setCopied(false), 1500);
-
-    return () => window.clearTimeout(timeout);
-  }, [copied]);
 
   useEffect(() => {
     if (previousTextRef.current === hook.text) {
@@ -57,21 +51,15 @@ export function HookCard({
     return () => window.clearTimeout(timeout);
   }, [hook.text]);
 
-  const copyHook = async (): Promise<void> => {
-    await navigator.clipboard.writeText(hook.text);
-    setCopied(true);
-  };
-
   const cardStyle = hook.best_pick
     ? {
-        boxShadow:
-          '0 0 0 1.5px var(--accent-amber), var(--shadow-amber-glow)',
+        boxShadow: '0 0 0 1.5px var(--accent-amber), var(--shadow-amber-glow)',
       }
     : undefined;
 
   return (
     <article
-      className="relative flex min-h-[360px] flex-col rounded-md border border-white/10 bg-surface p-5 shadow-panel opacity-0 motion-safe:animate-cardIn"
+      className="relative flex min-h-[360px] min-w-0 flex-col rounded-md border border-white/10 bg-surface p-5 shadow-panel motion-safe:opacity-0 motion-safe:animate-cardIn"
       style={{ animationDelay: `${index * 40}ms`, ...cardStyle }}
     >
       <div className="mb-5 flex items-start justify-between gap-4">
@@ -88,16 +76,6 @@ export function HookCard({
             {hook.timecode}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => {
-            void copyHook();
-          }}
-          aria-label={copied ? 'Hook copied' : 'Copy hook'}
-          className="grid h-11 w-11 shrink-0 place-items-center rounded-[4px] border border-white/10 text-muted transition-colors hover:border-cyan/50 hover:text-cyan focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"
-        >
-          {copied ? <Check size={18} /> : <Copy size={18} />}
-        </button>
       </div>
 
       <div
@@ -105,7 +83,7 @@ export function HookCard({
           contentVisible && !isRewriting ? 'opacity-100' : 'opacity-45'
         }`}
       >
-        <h2 className="pr-2 font-display text-[clamp(1.35rem,4.2vw,1.8rem)] font-semibold leading-[1.08] text-primary">
+        <h2 className="break-words pr-2 font-display text-2xl font-semibold leading-[1.08] text-primary">
           {hook.text}
         </h2>
         <p className="mt-4 text-sm italic leading-6 text-muted">
@@ -119,6 +97,13 @@ export function HookCard({
       </div>
 
       <div className="mt-auto pt-6">
+        <HookActions
+          text={hook.text}
+          framework={hook.framework}
+          platform={platform}
+          saved={saved}
+          onSave={onSave}
+        />
         <div className="mb-3 flex min-h-6 items-center justify-between gap-3">
           <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted">
             Rewrite This One

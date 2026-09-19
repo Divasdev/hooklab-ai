@@ -6,8 +6,8 @@
     "api/rewrite-hook.ts": {
       "maxDuration": 60
     },
-    "api/debug.ts": {
-      "maxDuration": 30
+    "api/expand-hook.ts": {
+      "maxDuration": 60
     }
   },
   "rewrites": [
@@ -17,4 +17,3 @@
     }
   ]
 }
-

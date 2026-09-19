@@ -2,6 +2,8 @@ import { Check, Copy, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 import type { ScriptOutline as ScriptOutlineData } from '../types/hooks';
+import { useDialogFocus } from '../hooks/useDialogFocus';
+import { copyToClipboard } from '../utils/clipboard';
 
 interface ScriptOutlineProps {
   isOpen: boolean;
@@ -32,22 +34,8 @@ export function ScriptOutline({
 }: ScriptOutlineProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const [copied, setCopied] = useState(false);
-
-  useEffect(() => {
-    if (!isOpen) {
-      return;
-    }
-
-    const handleKeyDown = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') {
-        onClose();
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
+  const [copyError, setCopyError] = useState(false);
+  useDialogFocus(isOpen, panelRef, onClose);
 
   useEffect(() => {
     if (!copied) {
@@ -70,8 +58,9 @@ export function ScriptOutline({
   }
 
   const copyOutline = async (): Promise<void> => {
-    await navigator.clipboard.writeText(buildOutlineText(outline));
-    setCopied(true);
+    const ok = await copyToClipboard(buildOutlineText(outline));
+    setCopied(ok);
+    setCopyError(!ok);
   };
 
   return (
@@ -88,6 +77,9 @@ export function ScriptOutline({
     >
       <div
         ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Script outline"
         className="flex h-[82vh] w-full flex-col overflow-hidden rounded-t-[16px] border border-white/10 bg-surface shadow-panel animate-[cardIn_300ms_cubic-bezier(0.2,0.8,0.2,1)_both] motion-reduce:animate-none md:h-[80vh] md:max-h-[800px] md:w-[640px] md:rounded-[12px]"
       >
         <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-white/10 bg-surface/95 px-5 py-4 backdrop-blur-md">
@@ -152,6 +144,11 @@ export function ScriptOutline({
         </div>
 
         <div className="border-t border-white/10 p-4">
+          {copyError && (
+            <p role="alert" className="mb-2 text-xs text-amber">
+              Copy failed. Please try again.
+            </p>
+          )}
           <button
             type="button"
             onClick={() => {

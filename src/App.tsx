@@ -1,5 +1,5 @@
-import { Clock3, Flame, Moon, Scissors, Sun } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Bookmark, Clock3, Flame, Moon, Scissors, Sun } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { BackToTop } from './components/BackToTop';
 import { BottomTabBar } from './components/BottomTabBar';
@@ -21,6 +21,8 @@ import { TemplateTrigger } from './components/TemplateTrigger';
 import { WordSwap } from './components/WordSwap';
 import { type ScriptTemplate } from './data/templates';
 import { useHistory } from './hooks/useHistory';
+import { useSavedHooks } from './hooks/useSavedHooks';
+import { SavedHooksDrawer } from './components/SavedHooksDrawer';
 import {
   expandHook,
   generateHooks,
@@ -74,18 +76,29 @@ function App() {
   const [rewritingFramework, setRewritingFramework] = useState<
     HookResult['framework'] | null
   >(null);
-  const [expandingKey, setExpandingKey] = useState<string | null>(null);
+  const [expandingKeys, setExpandingKeys] = useState<Set<string>>(new Set());
+  const resultVersion = useRef(0);
+  const expansionRequests = useRef(new Set<string>());
   const [expandErrors, setExpandErrors] = useState<Record<string, string>>({});
-  const [scriptOutline, setScriptOutline] =
-    useState<ScriptOutlineData | null>(null);
+  const [scriptOutline, setScriptOutline] = useState<ScriptOutlineData | null>(
+    null,
+  );
   const [isOutlineOpen, setIsOutlineOpen] = useState(false);
+  const closeOutline = useCallback(() => setIsOutlineOpen(false), []);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [isLibraryOpen, setIsLibraryOpen] = useState(false);
+  const closeLibrary = useCallback(() => setIsLibraryOpen(false), []);
   const [isTemplateSheetOpen, setIsTemplateSheetOpen] = useState(false);
   const [themePreference, setThemePreference] = useState<ThemePreference>(() =>
     document.documentElement.dataset.theme === 'night' ? 'night' : 'default',
   );
   const resultsRef = useRef<HTMLDivElement>(null);
   const { entries, saveEntry, deleteEntry, clearEntries } = useHistory();
+  const library = useSavedHooks();
+  const resultPlatform = currentRequest?.platform ?? platform;
+  const resultHookA = currentRequest?.script ?? script;
+  const resultHookB = currentRequest?.hookB ?? hookB;
+  const winnerHook = compareResult?.winner === 'B' ? resultHookB : resultHookA;
 
   const minLength = mode === 'roast' ? 5 : 20;
 
@@ -183,6 +196,9 @@ function App() {
     }
 
     setIsLoading(true);
+    resultVersion.current += 1;
+    expansionRequests.current.clear();
+    setExpandingKeys(new Set());
     setInputError(null);
     setSurfaceError(null);
     setPreviousHooks({});
@@ -240,8 +256,8 @@ function App() {
         hook: hook.text,
         framework: hook.framework,
         direction,
-        platform,
-        hookWindow,
+        platform: resultPlatform,
+        hookWindow: currentRequest?.hookWindow ?? hookWindow,
       });
 
       setPreviousHooks((currentPreviousHooks) => ({
@@ -273,7 +289,10 @@ function App() {
     framework: string,
     originalScript: string,
   ): Promise<void> => {
-    setExpandingKey(key);
+    if (expansionRequests.current.has(key)) return;
+    expansionRequests.current.add(key);
+    const version = resultVersion.current;
+    setExpandingKeys(new Set(expansionRequests.current));
     setExpandErrors((currentErrors) => {
       const nextErrors = { ...currentErrors };
       delete nextErrors[key];
@@ -284,15 +303,17 @@ function App() {
       const response = await expandHook({
         hook: hookText,
         framework,
-        platform,
+        platform: resultPlatform,
         originalScript,
-        tone,
-        audience,
+        tone: currentRequest?.tone ?? tone,
+        audience: currentRequest?.audience ?? audience,
       });
 
+      if (version !== resultVersion.current) return;
       setScriptOutline(response.outline);
       setIsOutlineOpen(true);
     } catch (caughtError) {
+      if (version !== resultVersion.current) return;
       const message =
         caughtError instanceof HookLabApiError
           ? caughtError.message
@@ -303,7 +324,10 @@ function App() {
         [key]: message,
       }));
     } finally {
-      setExpandingKey(null);
+      if (version === resultVersion.current) {
+        expansionRequests.current.delete(key);
+        setExpandingKeys(new Set(expansionRequests.current));
+      }
     }
   };
 
@@ -328,6 +352,10 @@ function App() {
   };
 
   const restoreHistoryEntry = (entry: HistoryEntry): void => {
+    resultVersion.current += 1;
+    expansionRequests.current.clear();
+    setExpandingKeys(new Set());
+    setIsOutlineOpen(false);
     setScript(entry.script);
     setHookB(entry.hookB ?? '');
     setPlatform(entry.platform);
@@ -379,7 +407,11 @@ function App() {
     setThemePreference((currentPreference) => {
       const nextPreference =
         currentPreference === 'night' ? 'default' : 'night';
-      localStorage.setItem('hooklab_theme_preference', nextPreference);
+      try {
+        localStorage.setItem('hooklab_theme_preference', nextPreference);
+      } catch {
+        /* Theme still works for this session. */
+      }
       return nextPreference;
     });
   };
@@ -425,6 +457,17 @@ function App() {
             retention before the timeline gets crowded.
           </div>
           <div className="flex items-center gap-3 lg:self-start">
+            <button
+              type="button"
+              onClick={() => setIsLibraryOpen(true)}
+              aria-label={`Open saved hooks (${library.savedHooks.length})`}
+              title="Saved hooks"
+              className="inline-flex min-h-11 items-center gap-2 rounded border border-white/10 px-3 text-sm text-muted hover:text-cyan focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan"
+            >
+              <Bookmark size={18} />
+              Saved{' '}
+              <span className="text-cyan">{library.savedHooks.length}</span>
+            </button>
             <button
               type="button"
               onClick={() => setIsHistoryOpen(true)}
@@ -571,6 +614,11 @@ function App() {
                 {surfaceError}
               </div>
             ) : null}
+            {library.error ? (
+              <p role="alert" className="mb-4 text-sm text-amber">
+                {library.error}
+              </p>
+            ) : null}
 
             {isLoading ? (
               <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
@@ -585,14 +633,28 @@ function App() {
               >
                 <CompareCard
                   compare={compareResult}
-                  hookA={script}
-                  hookB={hookB}
-                  isExpandingWinner={expandingKey === 'compare-winner'}
+                  hookA={resultHookA}
+                  hookB={resultHookB}
+                  platform={resultPlatform}
+                  winnerSaved={library.isSaved(winnerHook, resultPlatform)}
+                  improvedSaved={library.isSaved(
+                    compareResult.improvedHook,
+                    resultPlatform,
+                  )}
+                  onSaveWinner={() =>
+                    library.toggle(winnerHook, 'COMPARE WINNER', resultPlatform)
+                  }
+                  onSaveImproved={() =>
+                    library.toggle(
+                      compareResult.improvedHook,
+                      'IMPROVED HOOK',
+                      resultPlatform,
+                    )
+                  }
+                  isExpandingWinner={expandingKeys.has('compare-winner')}
                   expandError={expandErrors['compare-winner']}
                   onExpandWinner={() => {
-                    const winnerHook =
-                      compareResult.winner === 'A' ? script : hookB;
-                    const originalContext = `Hook A: ${script}\n\nHook B: ${hookB}`;
+                    const originalContext = winnerHook;
 
                     void expandSelectedHook(
                       'compare-winner',
@@ -624,10 +686,18 @@ function App() {
                       key={hook.framework}
                       hook={hook}
                       index={index}
-                      platform={platform}
+                      platform={resultPlatform}
+                      saved={library.isSaved(hook.text, resultPlatform)}
+                      onSave={() =>
+                        library.toggle(
+                          hook.text,
+                          hook.framework,
+                          resultPlatform,
+                        )
+                      }
                       canUndo={Boolean(previousHooks[hook.framework])}
                       isRewriting={rewritingFramework === hook.framework}
-                      isExpanding={expandingKey === hook.framework}
+                      isExpanding={expandingKeys.has(hook.framework)}
                       expandError={expandErrors[hook.framework]}
                       onRewrite={(direction) => {
                         void rewriteCard(hook, direction);
@@ -661,8 +731,8 @@ function App() {
                   Ready to cut
                 </h3>
                 <p className="text-muted max-w-md">
-                  Paste your script on the left or select a template from the bottom left to start
-                  generating high-retention hooks.
+                  Paste your script on the left or select a template from the
+                  bottom left to start generating high-retention hooks.
                 </p>
               </div>
             )}
@@ -686,11 +756,48 @@ function App() {
       />
 
       <BackToTop />
+      <SavedHooksDrawer
+        isOpen={isLibraryOpen}
+        hooks={library.savedHooks}
+        error={library.error}
+        onClose={closeLibrary}
+        onRemove={library.remove}
+        onLabels={library.setLabels}
+        onUse={(hook) => {
+          setScript(hook.text);
+          setPlatform(hook.platform);
+          setMode('roast');
+          setInputError(null);
+          setIsLibraryOpen(false);
+          window.scrollTo({
+            top: 0,
+            behavior: window.matchMedia('(prefers-reduced-motion: reduce)')
+              .matches
+              ? 'auto'
+              : 'smooth',
+          });
+        }}
+        onCompare={(first, second) => {
+          setScript(first.text);
+          setHookB(second.text);
+          setPlatform(first.platform);
+          setMode('compare');
+          setInputError(null);
+          setIsLibraryOpen(false);
+          window.scrollTo({
+            top: 0,
+            behavior: window.matchMedia('(prefers-reduced-motion: reduce)')
+              .matches
+              ? 'auto'
+              : 'smooth',
+          });
+        }}
+      />
 
       <ScriptOutline
         isOpen={isOutlineOpen}
         outline={scriptOutline}
-        onClose={() => setIsOutlineOpen(false)}
+        onClose={closeOutline}
       />
 
       <HistoryDrawer

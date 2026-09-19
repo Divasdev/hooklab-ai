@@ -245,12 +245,10 @@ export const createExpandHookResponse = async ({
     return { status: 400, payload: { error: request.error } };
   }
 
-  console.info(
-    `[HookLab] Expand request accepted. framework=${request.framework}, ip=${ip}`,
-  );
+  console.info('[HookLab] Expand request accepted.');
 
   if (!checkRateLimit(expandRateLimits, ip, 20)) {
-    console.warn(`[HookLab] Expand rate limit exceeded for ip=${ip}`);
+    console.warn('[HookLab] Expand rate limit exceeded.');
     return {
       status: 429,
       payload: { error: 'Too many requests. Try again in a bit.' },
@@ -282,6 +280,7 @@ export const createExpandHookResponse = async ({
       };
     }
 
+    expansion.outline.hook_recap = request.hook;
     return { status: 200, payload: expansion };
   } catch (err) {
     if (err instanceof AllKeysExhaustedError) {
@@ -295,7 +294,7 @@ export const createExpandHookResponse = async ({
     }
     if (err instanceof GeminiApiError) {
       console.error(
-        `[HookLab] Returning expand Gemini error to client. status=${err.status}, message=${err.message}`,
+        `[HookLab] Returning expand Gemini error to client. status=${err.status}`,
       );
       return {
         status: err.status === 400 ? 400 : 502,
@@ -304,7 +303,7 @@ export const createExpandHookResponse = async ({
         },
       };
     }
-    console.error(`[HookLab] Unhandled expand failure: ${String(err)}`);
+    console.error('[HookLab] Unhandled expand failure.');
     return {
       status: 502,
       payload: { error: 'Something went wrong on our end. Try again.' },

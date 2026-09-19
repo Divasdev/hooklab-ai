@@ -59,7 +59,11 @@ const readHistory = (): HistoryEntry[] => {
 };
 
 const writeHistory = (entries: HistoryEntry[]): void => {
-  window.localStorage.setItem(historyKey, JSON.stringify(entries));
+  try {
+    window.localStorage.setItem(historyKey, JSON.stringify(entries));
+  } catch {
+    // A full or restricted browser store must not discard a successful generation.
+  }
 };
 
 const createId = (): string => {

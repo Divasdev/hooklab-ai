@@ -1,7 +1,8 @@
-import { Check, ChevronDown, Copy, Trophy } from 'lucide-react';
+import { ChevronDown, Trophy } from 'lucide-react';
 import { useState } from 'react';
 
 import type { CompareHooksResponse } from '../types/hooks';
+import { HookActions } from './HookActions';
 
 interface CompareCardProps {
   compare: CompareHooksResponse;
@@ -10,6 +11,11 @@ interface CompareCardProps {
   isExpandingWinner?: boolean;
   expandError?: string;
   onExpandWinner?: () => void;
+  platform: string;
+  winnerSaved: boolean;
+  improvedSaved: boolean;
+  onSaveWinner: () => void;
+  onSaveImproved: () => void;
 }
 
 interface CollapsibleSectionProps {
@@ -45,7 +51,9 @@ function CollapsibleSection({
       </button>
       <div
         className={`transition-all duration-200 ${
-          isOpen ? 'max-h-[2000px] opacity-100' : 'max-h-0 overflow-hidden opacity-0'
+          isOpen
+            ? 'max-h-[2000px] opacity-100'
+            : 'max-h-0 overflow-hidden opacity-0'
         }`}
       >
         <div className="p-6">{children}</div>
@@ -61,19 +69,12 @@ export function CompareCard({
   isExpandingWinner = false,
   expandError,
   onExpandWinner,
+  platform,
+  winnerSaved,
+  improvedSaved,
+  onSaveWinner,
+  onSaveImproved,
 }: CompareCardProps) {
-  const [copied, setCopied] = useState(false);
-
-  const copyToClipboard = async () => {
-    try {
-      await navigator.clipboard.writeText(compare.improvedHook);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // Ignore copy errors
-    }
-  };
-
   const metrics = [
     { name: 'Clarity', data: compare.analysis.clarity },
     { name: 'Curiosity', data: compare.analysis.curiosity },
@@ -95,7 +96,19 @@ export function CompareCard({
           <div className="mb-4 font-display text-3xl font-bold text-primary">
             {compare.confidence}% Confidence
           </div>
-          <p className="max-w-md text-base text-primary/90">{compare.summary}</p>
+          <p className="max-w-md text-base text-primary/90">
+            {compare.summary}
+          </p>
+          <p className="my-4 max-w-md break-words text-lg text-primary">
+            {compare.winner === 'A' ? hookA : hookB}
+          </p>
+          <HookActions
+            text={compare.winner === 'A' ? hookA : hookB}
+            framework="COMPARE WINNER"
+            platform={platform}
+            saved={winnerSaved}
+            onSave={onSaveWinner}
+          />
           {onExpandWinner ? (
             <div className="mt-5">
               <button
@@ -120,16 +133,12 @@ export function CompareCard({
 
       {/* Hook A — collapsed */}
       <CollapsibleSection title="Hook A">
-        <p className="text-sm leading-6 text-primary">
-          &ldquo;{hookA}&rdquo;
-        </p>
+        <p className="text-sm leading-6 text-primary">&ldquo;{hookA}&rdquo;</p>
       </CollapsibleSection>
 
       {/* Hook B — collapsed */}
       <CollapsibleSection title="Hook B">
-        <p className="text-sm leading-6 text-primary">
-          &ldquo;{hookB}&rdquo;
-        </p>
+        <p className="text-sm leading-6 text-primary">&ldquo;{hookB}&rdquo;</p>
       </CollapsibleSection>
 
       {/* Score Breakdown — collapsed */}
@@ -164,20 +173,19 @@ export function CompareCard({
           <h3 className="font-mono text-xs uppercase tracking-[0.15em] text-cyan">
             Improved Final Hook
           </h3>
-          <button
-            type="button"
-            onClick={() => {
-              void copyToClipboard();
-            }}
-            className="flex min-h-11 items-center gap-2 rounded px-2 text-xs font-semibold text-cyan/70 transition-colors hover:text-cyan focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"
-          >
-            {copied ? <Check size={14} /> : <Copy size={14} />}
-            {copied ? 'Copied!' : 'Copy'}
-          </button>
         </div>
         <p className="font-display text-xl leading-relaxed text-primary">
           {compare.improvedHook}
         </p>
+        <div className="mt-4">
+          <HookActions
+            text={compare.improvedHook}
+            framework="IMPROVED HOOK"
+            platform={platform}
+            saved={improvedSaved}
+            onSave={onSaveImproved}
+          />
+        </div>
       </div>
     </div>
   );

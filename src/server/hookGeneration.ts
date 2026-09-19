@@ -106,17 +106,17 @@ const stripJsonFences = (text: string): string => {
     .trim()
     .replace(/^[\s\S]*?```(?:json)?\s*/i, '')
     .replace(/\s*```[\s\S]*$/i, '');
-  
-  const firstBrace = cleaned.indexOf("{");
+
+  const firstBrace = cleaned.indexOf('{');
   if (firstBrace > 0) {
     cleaned = cleaned.slice(firstBrace);
   }
-  
-  const lastBrace = cleaned.lastIndexOf("}");
+
+  const lastBrace = cleaned.lastIndexOf('}');
   if (lastBrace !== -1 && lastBrace < cleaned.length - 1) {
     cleaned = cleaned.slice(0, lastBrace + 1);
   }
-  
+
   return cleaned.trim();
 };
 
@@ -165,13 +165,15 @@ const parseHooksPayload = (
 
   try {
     parsed = JSON.parse(stripJsonFences(rawText));
-  } catch (e) {
-    console.error('[HookLab] parseHooksPayload JSON parse failed:', e, '\nRaw Text:', rawText);
+  } catch {
+    console.error('[HookLab] parseHooksPayload JSON parse failed.');
     return null;
   }
 
   if (!isRecord(parsed) || !Array.isArray(parsed.hooks)) {
-    console.error('[HookLab] parseHooksPayload invalid structure, expected object with hooks array.');
+    console.error(
+      '[HookLab] parseHooksPayload invalid structure, expected object with hooks array.',
+    );
     return null;
   }
 
@@ -182,34 +184,34 @@ const parseHooksPayload = (
 
   for (const item of parsed.hooks) {
     if (!isRecord(item)) {
-      console.error('[HookLab] item in hooks array is not a record:', item);
+      console.error('[HookLab] Hook item is not a record.');
       return null;
     }
 
     const scores = parseScores(item.scores);
 
     if (!isHookFramework(item.framework)) {
-      console.error('[HookLab] Invalid framework:', item.framework);
+      console.error('[HookLab] Invalid framework.');
       return null;
     }
     if (typeof item.text !== 'string' || item.text.trim().length === 0) {
-      console.error('[HookLab] Invalid text for framework', item.framework, item.text);
+      console.error('[HookLab] Invalid hook text.');
       return null;
     }
     if (typeof item.why !== 'string' || item.why.trim().length === 0) {
-      console.error('[HookLab] Invalid why for framework', item.framework, item.why);
+      console.error('[HookLab] Invalid hook explanation.');
       return null;
     }
     if (!allowedTimecodes.includes(item.timecode as HookTimecode)) {
-      console.error('[HookLab] Invalid timecode for framework', item.framework, item.timecode);
+      console.error('[HookLab] Invalid timecode.');
       return null;
     }
     if (scores === null) {
-      console.error('[HookLab] Invalid scores for framework', item.framework, item.scores);
+      console.error('[HookLab] Invalid scores.');
       return null;
     }
     if (typeof item.best_pick !== 'boolean') {
-      console.error('[HookLab] Invalid best_pick for framework', item.framework, item.best_pick);
+      console.error('[HookLab] Invalid best_pick.');
       return null;
     }
     if (seenFrameworks.has(item.framework)) {
@@ -539,14 +541,10 @@ const platformDirections: Record<Platform, string> = {
 };
 
 const toneDirections: Record<Tone, string> = {
-  Punchy:
-    'Short sentences. High energy. No wasted words.',
-  Clean:
-    'Clear, professional, trustworthy. No hype.',
-  Controversial:
-    'Challenge a common belief. Start a debate.',
-  Story:
-    'Pull them into a moment. Past tense. Specific detail.',
+  Punchy: 'Short sentences. High energy. No wasted words.',
+  Clean: 'Clear, professional, trustworthy. No hype.',
+  Controversial: 'Challenge a common belief. Start a debate.',
+  Story: 'Pull them into a moment. Past tense. Specific detail.',
 };
 
 const audienceDirections: Record<Audience, string> = {
@@ -565,7 +563,8 @@ const intensityDirections: Record<Intensity, string> = {
 
 const languageDirections: Record<HookLanguage, string> = {
   English: 'Write in fluent English.',
-  Hinglish: 'Write in natural Hinglish — the way Indian creators actually speak on YouTube and Instagram. Mix Hindi and English naturally. NOT translated Hindi. Real internet Hinglish.',
+  Hinglish:
+    'Write in natural Hinglish — the way Indian creators actually speak on YouTube and Instagram. Mix Hindi and English naturally. NOT translated Hindi. Real internet Hinglish.',
   Hindi: 'Write entirely in Hindi using Devanagari script. Proper grammar.',
 };
 
@@ -582,12 +581,12 @@ Do not invent new subject matter, fake statistics, fake outcomes, or unrelated e
 Do not write hooks about Reels, TikTok, creators, posting, views, editing, or content unless those ideas appear in the SOURCE SCRIPT.
 
 PLATFORM: ${request.platform}
-Platform rules: ${platformDirections[request.platform] ?? "Short-form video. Hook must stop the scroll instantly."}
+Platform rules: ${platformDirections[request.platform] ?? 'Short-form video. Hook must stop the scroll instantly.'}
 
-TONE: ${request.tone} — ${toneDirections[request.tone] ?? "Engaging and clear."}
+TONE: ${request.tone} — ${toneDirections[request.tone] ?? 'Engaging and clear.'}
 AUDIENCE: ${request.audience} — ${audienceDirections[request.audience]}
-INTENSITY: ${request.intensity} — ${intensityDirections[request.intensity] ?? "Confident and direct."}
-LANGUAGE: ${languageDirections[request.language] ?? "Write in English."}
+INTENSITY: ${request.intensity} — ${intensityDirections[request.intensity] ?? 'Confident and direct.'}
+LANGUAGE: ${languageDirections[request.language] ?? 'Write in English.'}
 
 YOUR TASK:
 Rewrite the given script's opening hook in 10 different frameworks.
@@ -928,7 +927,6 @@ const callGemini = async (
       // ignore
     }
     console.error(`[HookLab] Gemini error status: ${response.status}`);
-    console.error(`[HookLab] Error body: ${body.slice(0, 2000)}`);
     throw new GeminiApiError(response.status, errMsg);
   }
 
@@ -937,9 +935,6 @@ const callGemini = async (
   console.info(`[HookLab] Gemini response parsed in ${Date.now() - start}ms`);
   if (!text) {
     console.warn('[HookLab] Gemini returned 200 but no text was extracted.');
-    console.warn(
-      `[HookLab] Gemini success payload: ${JSON.stringify(payload).slice(0, 2000)}`,
-    );
   }
   return text;
 };
@@ -967,9 +962,7 @@ export const callGeminiWithRotation = async (
   for (let i = 0; i < apiKeys.length; i += 1) {
     const key = apiKeys[i];
     const start = Date.now();
-    console.info(
-      `[HookLab] Trying key ${i + 1}/${apiKeys.length} - ${key.slice(0, 8)}...`,
-    );
+    console.info(`[HookLab] Trying key ${i + 1}/${apiKeys.length}`);
 
     try {
       const text = await callGemini(key, model, systemPrompt, userPrompt);
@@ -986,12 +979,9 @@ export const callGeminiWithRotation = async (
       }
       if (err instanceof GeminiApiError) {
         console.error(`[HookLab] Non-429 error on key ${i + 1}: ${err.status}`);
-        console.error(`[HookLab] Gemini API message: ${err.message}`);
       } else {
         console.error(
-          `[HookLab] Unexpected Gemini call failure on key ${i + 1}: ${String(
-            err,
-          )}`,
+          `[HookLab] Unexpected Gemini call failure on key ${i + 1}`,
         );
       }
       // Non-429 errors should propagate immediately
@@ -1027,11 +1017,11 @@ export const createGenerateHooksResponse = async ({
   }
 
   console.info(
-    `[HookLab] Generate request accepted. mode=${request.mode}, platform=${request.platform}, ip=${ip}`,
+    `[HookLab] Generate request accepted. mode=${request.mode}, platform=${request.platform}`,
   );
 
   if (!checkRateLimit(generateRateLimits, ip, 10)) {
-    console.warn(`[HookLab] Generate rate limit exceeded for ip=${ip}`);
+    console.warn('[HookLab] Generate rate limit exceeded.');
     return {
       status: 429,
       payload: { error: 'Too many requests. Try again in a bit.' },
@@ -1181,7 +1171,7 @@ export const createGenerateHooksResponse = async ({
     if (!generatedHooks) {
       if (geminiError) {
         console.error(
-          `[HookLab] Returning Gemini error to client. status=${geminiError.status}, message=${geminiError.message}`,
+          `[HookLab] Returning Gemini error to client. status=${geminiError.status}`,
         );
         return {
           status: geminiError.status === 400 ? 400 : 502,
@@ -1202,8 +1192,8 @@ export const createGenerateHooksResponse = async ({
     }
 
     return { status: 200, payload: generatedHooks };
-  } catch (err) {
-    console.error(`[HookLab] Unhandled generate failure: ${String(err)}`);
+  } catch {
+    console.error('[HookLab] Unhandled generate failure.');
     return {
       status: 502,
       payload: { error: 'Something went wrong on our end. Try again.' },
@@ -1225,11 +1215,11 @@ export const createRewriteHookResponse = async ({
   }
 
   console.info(
-    `[HookLab] Rewrite request accepted. direction=${request.direction}, ip=${ip}`,
+    `[HookLab] Rewrite request accepted. direction=${request.direction}`,
   );
 
   if (!checkRateLimit(rewriteRateLimits, ip, 20)) {
-    console.warn(`[HookLab] Rewrite rate limit exceeded for ip=${ip}`);
+    console.warn('[HookLab] Rewrite rate limit exceeded.');
     return {
       status: 429,
       payload: { error: 'Too many requests. Try again in a bit.' },
@@ -1274,7 +1264,7 @@ export const createRewriteHookResponse = async ({
     }
     if (err instanceof GeminiApiError) {
       console.error(
-        `[HookLab] Returning rewrite Gemini error to client. status=${err.status}, message=${err.message}`,
+        `[HookLab] Returning rewrite Gemini error to client. status=${err.status}`,
       );
       return {
         status: err.status === 400 ? 400 : 502,
@@ -1283,7 +1273,7 @@ export const createRewriteHookResponse = async ({
         },
       };
     }
-    console.error(`[HookLab] Unhandled rewrite failure: ${String(err)}`);
+    console.error('[HookLab] Unhandled rewrite failure.');
     return {
       status: 502,
       payload: { error: 'Something went wrong on our end. Try again.' },

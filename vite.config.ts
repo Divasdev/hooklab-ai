@@ -7,6 +7,7 @@ import {
   createRewriteHookResponse,
   defaultGeminiModel,
 } from './src/server/hookGeneration.js';
+import { createExpandHookResponse } from './src/server/scriptExpansion.js';
 
 const readRequestBody = async (request: IncomingMessage): Promise<unknown> => {
   const chunks: Uint8Array[] = [];
@@ -105,7 +106,10 @@ const localApiPlugin = (envApiKeys: string[], geminiModel: string): Plugin => ({
         const body = await readRequestBody(request);
         const apiKeys =
           envApiKeys.length > 0 ? envApiKeys : getApiKeysFromEnv();
-        const result = await createRewriteHookResponse({
+        const handler = request.url?.startsWith('/api/expand-hook')
+          ? createExpandHookResponse
+          : createRewriteHookResponse;
+        const result = await handler({
           apiKeys,
           body,
           ip: request.socket.remoteAddress ?? 'unknown',
@@ -127,8 +131,16 @@ const localApiPlugin = (envApiKeys: string[], geminiModel: string): Plugin => ({
       void handleLocalApiRequest(request, response);
     });
 
-    server.middlewares.use('/api/rewrite-hook', (request, response) => {
-      void handleLocalRewriteRequest(request, response);
+    server.middlewares.use((request, response, next) => {
+      if (
+        ['/api/rewrite-hook', '/api/expand-hook'].includes(
+          request.url?.split('?')[0] ?? '',
+        )
+      ) {
+        void handleLocalRewriteRequest(request, response);
+      } else {
+        next();
+      }
     });
   },
 });

@@ -50,6 +50,19 @@ If you prefer to decouple the frontend and backend, you must split the applicati
 
 **Step 2: Backend (Render / Railway / Heroku)**
 
-1. You will need to create a dedicated Express `server.js` file that imports the logic from `src/server/hookGeneration.ts` and creates `/api/generate-hooks` and `/api/rewrite-hook` endpoints.
+1. You will need to create a dedicated Express `server.js` file that imports the handlers from `src/server/hookGeneration.ts` and `src/server/scriptExpansion.ts` and creates `/api/generate-hooks`, `/api/rewrite-hook`, and `/api/expand-hook` endpoints.
 2. Ensure you set the `GEMINI_API_KEY` securely in the dashboard of your chosen backend provider.
 3. Configure CORS to allow requests from your Netlify frontend URL.
+
+## Saved Hooks and Sharing
+
+Save individual results from Generate, Roast, or Compare using the bookmark
+action. The Saved drawer supports search, platform filters, labels, selected
+CSV export, copying, and reusing hooks in Roast or Compare. PNG hook cards
+are generated locally. The library stays in this browser; clearing site data
+removes it. Outlines are not saved.
+
+Run `npm run check` for lint, TypeScript, production build and regression tests.
+See [the API reference](docs/API_REFERENCE.md) for current payloads and limits,
+and [the launch plan](docs/LAUNCH_PLAN.md) for browser testing, release checks,
+next product decisions and the first two weeks of marketing.
