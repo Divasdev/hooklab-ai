@@ -130,6 +130,12 @@ const normalizeScore = (value: unknown): number | null => {
   return Math.max(0, Math.min(100, Math.round(value)));
 };
 
+// Overlay fields are optional: a hook stays usable if the model omits them.
+const optionalText = (value: unknown, maxLength: number): string | undefined =>
+  typeof value === 'string' && value.trim().length > 0
+    ? value.trim().slice(0, maxLength)
+    : undefined;
+
 const parseScores = (value: unknown): HookScores | null => {
   if (!isRecord(value)) {
     return null;
@@ -231,6 +237,8 @@ const parseHooksPayload = (
       timecode: expectedTimecode,
       scores,
       best_pick: item.best_pick,
+      on_screen_text: optionalText(item.on_screen_text, 80),
+      visual: optionalText(item.visual, 200),
     });
   }
 
@@ -340,6 +348,8 @@ const parseRewritePayload = (rawText: string): RewriteHookResponse | null => {
     text: parsed.text.trim(),
     why: parsed.why.trim(),
     scores,
+    on_screen_text: optionalText(parsed.on_screen_text, 80),
+    visual: optionalText(parsed.visual, 200),
   };
 };
 
@@ -568,6 +578,9 @@ const languageDirections: Record<HookLanguage, string> = {
   Hindi: 'Write entirely in Hindi using Devanagari script. Proper grammar.',
 };
 
+const overlayRules = `- "on_screen_text" is the caption overlay for the first frame: at most 8 words, readable with sound off, complementing (not repeating word for word) the spoken hook. Use the same language as the hook.
+- "visual" is one short sentence describing what the viewer sees in the first second. It must be filmable by a solo creator with a phone and match the source topic.`;
+
 const buildGenerateSystemPrompt = (request: GenerateHooksRequest): string =>
   `
 You are an expert video hook writer who has studied 10,000 viral videos.
@@ -608,6 +621,7 @@ CRITICAL RULES:
 - Scores must be integers from 0 to 100.
 - Score curiosity by unanswered tension, clarity by instant understanding, scroll_stop by pause power, and platform_fit by pacing match.
 - Do not include quotation marks around the spoken hook unless the line itself needs them.
+${overlayRules}
 
 REQUIRED JSON SHAPE:
 {
@@ -623,7 +637,9 @@ REQUIRED JSON SHAPE:
         "scroll_stop": 91,
         "platform_fit": 88
       },
-      "best_pick": false
+      "best_pick": false,
+      "on_screen_text": "short caption overlay",
+      "visual": "what the first frame shows"
     }
   ]
 }
@@ -664,13 +680,16 @@ Return exactly this shape:
     "clarity": 90,
     "scroll_stop": 79,
     "platform_fit": 88
-  }
+  },
+  "on_screen_text": "...",
+  "visual": "..."
 }
 
 Rules:
 - Preserve the original hook's language and audience cues.
 - Keep the hook short enough to say inside ${request.hookWindow} seconds.
 - Apply the direction clearly without changing the framework.
+${overlayRules}
 - "why" must be 1-2 short sentences explaining the attention mechanism.
 - Scores must be integers from 0 to 100.
 `.trim();
@@ -732,7 +751,9 @@ Return exactly this shape:
         "scroll_stop": 91,
         "platform_fit": 85
       },
-      "best_pick": false
+      "best_pick": false,
+      "on_screen_text": "short caption overlay",
+      "visual": "what the first frame shows"
     }
   ]
 }
@@ -757,6 +778,7 @@ Hooks rules:
 - Scores must be integers from 0 to 100.
 - Score curiosity by unanswered tension, clarity by instant understanding, scroll_stop by pause power, and platform_fit by pacing match.
 - Do not include quotation marks around the spoken hook unless the line itself needs them.
+${overlayRules}
 `.trim();
 
 const buildRoastUserPrompt = (
