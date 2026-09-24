@@ -23,6 +23,9 @@ import { type ScriptTemplate } from './data/templates';
 import { useHistory } from './hooks/useHistory';
 import { useSavedHooks } from './hooks/useSavedHooks';
 import { SavedHooksDrawer } from './components/SavedHooksDrawer';
+import { SharedHookCard } from './components/SharedHookCard';
+import { readDraft, writeDraft } from './utils/draft';
+import { parseSharedHook, type SharedHook } from './utils/shareLink';
 import {
   expandHook,
   generateHooks,
@@ -50,15 +53,21 @@ const skeletonItems = Array.from({ length: 10 }, (_, index) => index);
 type ThemePreference = 'default' | 'night';
 
 function App() {
-  const [script, setScript] = useState('');
-  const [platform, setPlatform] = useState<Platform>('YouTube Shorts');
-  const [tone, setTone] = useState<Tone>('Punchy');
-  const [audience, setAudience] = useState<Audience>('Creators');
-  const [intensity, setIntensity] = useState<Intensity>('Sharp');
-  const [language, setLanguage] = useState<HookLanguage>('English');
-  const [hookWindow, setHookWindow] = useState<HookWindow>(5);
-  const [mode, setMode] = useState<Mode>('generate');
-  const [hookB, setHookB] = useState('');
+  const [initialDraft] = useState(readDraft);
+  const [script, setScript] = useState(initialDraft.script);
+  const [platform, setPlatform] = useState<Platform>(initialDraft.platform);
+  const [tone, setTone] = useState<Tone>(initialDraft.tone);
+  const [audience, setAudience] = useState<Audience>(initialDraft.audience);
+  const [intensity, setIntensity] = useState<Intensity>(initialDraft.intensity);
+  const [language, setLanguage] = useState<HookLanguage>(initialDraft.language);
+  const [hookWindow, setHookWindow] = useState<HookWindow>(
+    initialDraft.hookWindow,
+  );
+  const [mode, setMode] = useState<Mode>(initialDraft.mode);
+  const [hookB, setHookB] = useState(initialDraft.hookB);
+  const [sharedHook, setSharedHook] = useState<SharedHook | null>(() =>
+    parseSharedHook(window.location.search),
+  );
   const [hooks, setHooks] = useState<HookResult[]>([]);
   const [roast, setRoast] = useState<RoastCritique | null>(null);
   const [compareResult, setCompareResult] =
@@ -164,6 +173,43 @@ function App() {
 
     return () => window.cancelAnimationFrame(frameId);
   }, [compareResult, hooks.length, isLoading, successfulResultId]);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(
+      () =>
+        writeDraft({
+          script,
+          hookB,
+          platform,
+          tone,
+          audience,
+          intensity,
+          language,
+          hookWindow,
+          mode,
+        }),
+      400,
+    );
+
+    return () => window.clearTimeout(timeout);
+  }, [
+    script,
+    hookB,
+    platform,
+    tone,
+    audience,
+    intensity,
+    language,
+    hookWindow,
+    mode,
+  ]);
+
+  useEffect(() => {
+    // Keep the address bar clean so a refresh doesn't reopen the shared hook.
+    if (parseSharedHook(window.location.search)) {
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+  }, []);
 
   useEffect(() => {
     if (themePreference === 'night') {
@@ -272,6 +318,9 @@ function App() {
                 text: rewritten.text,
                 why: rewritten.why,
                 scores: rewritten.scores,
+                // Drop the old overlay rather than pair it with new wording.
+                on_screen_text: rewritten.on_screen_text,
+                visual: rewritten.visual,
               }
             : currentHook,
         ),
@@ -487,6 +536,16 @@ function App() {
                 event.preventDefault();
                 void cutHooks();
               }}
+              onKeyDown={(event) => {
+                if (
+                  event.key === 'Enter' &&
+                  (event.metaKey || event.ctrlKey) &&
+                  canSubmit
+                ) {
+                  event.preventDefault();
+                  void cutHooks();
+                }
+              }}
             >
               <div className="hidden md:block">
                 <ModeToggle
@@ -563,6 +622,9 @@ function App() {
                   </>
                 )}
               </button>
+              <p className="hidden font-mono text-[11px] text-muted md:block">
+                Ctrl/⌘ + Enter to run · drafts save in this browser
+              </p>
               <PlatformSelector
                 selectedPlatform={platform}
                 onChange={setPlatform}
@@ -687,6 +749,7 @@ function App() {
                       hook={hook}
                       index={index}
                       platform={resultPlatform}
+                      hookWindow={currentRequest?.hookWindow ?? hookWindow}
                       saved={library.isSaved(hook.text, resultPlatform)}
                       onSave={() =>
                         library.toggle(
@@ -722,6 +785,18 @@ function App() {
                   />
                 ) : null}
               </div>
+            ) : sharedHook ? (
+              <SharedHookCard
+                hook={sharedHook}
+                onRoast={() => {
+                  setScript(sharedHook.text);
+                  setPlatform(sharedHook.platform);
+                  setMode('roast');
+                  setInputError(null);
+                  setSharedHook(null);
+                }}
+                onDismiss={() => setSharedHook(null)}
+              />
             ) : (
               <div className="flex flex-col items-center justify-center h-64 text-center">
                 <div className="w-16 h-16 bg-gradient-to-tr from-red/10 to-amber/10 rounded-2xl flex items-center justify-center mb-4">
