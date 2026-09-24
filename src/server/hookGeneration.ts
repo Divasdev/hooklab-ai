@@ -29,6 +29,13 @@ import {
   type RoastCritique,
   type Tone,
 } from '../types/hooks.js';
+import {
+  compareSchema,
+  hooksSchema,
+  rewriteSchema,
+  roastSchema,
+  type GeminiSchema,
+} from './geminiSchemas.js';
 import { extractTopicAnchors, isGenerationGrounded } from './relevance.js';
 
 interface GeminiGenerateContentResponse {
@@ -46,11 +53,16 @@ interface RateLimitBucket {
   resetAt: number;
 }
 
+/** Progress events for streaming clients; the final result is still returned. */
+export type GenerateStreamEvent =
+  { type: 'hook'; hook: HookResult } | { type: 'reset' };
+
 export interface GenerateHooksHandlerOptions {
   apiKeys: string[];
   body: unknown;
   ip?: string;
   model?: string;
+  onEvent?: (event: GenerateStreamEvent) => void;
 }
 
 export interface RewriteHookHandlerOptions {
@@ -66,6 +78,11 @@ export interface HandlerResult<TPayload> {
 }
 
 export const defaultGeminiModel = 'gemini-2.5-flash';
+export const quotaExhaustedMessage =
+  'HookLab is at its AI usage limit right now. Please try again in a few minutes.';
+// A full reply takes ~10s; a stream silent for 8s has stalled and is retried.
+const geminiTimeoutMs = 25_000;
+const geminiStreamIdleMs = 8_000;
 const oneHourMs = 60 * 60 * 1000;
 const generateRateLimits = new Map<string, RateLimitBucket>();
 const rewriteRateLimits = new Map<string, RateLimitBucket>();
@@ -163,6 +180,55 @@ const parseScores = (value: unknown): HookScores | null => {
   };
 };
 
+const parseHookItem = (
+  item: unknown,
+  expectedTimecode: HookTimecode,
+): HookResult | null => {
+  if (!isRecord(item)) return null;
+
+  const scores = parseScores(item.scores);
+
+  if (
+    !isHookFramework(item.framework) ||
+    typeof item.text !== 'string' ||
+    item.text.trim().length === 0 ||
+    typeof item.why !== 'string' ||
+    item.why.trim().length === 0 ||
+    scores === null
+  ) {
+    return null;
+  }
+
+  return {
+    framework: item.framework,
+    text: item.text.trim(),
+    why: item.why.trim(),
+    // The window is fixed by the request, so the model never needs to echo it.
+    timecode: expectedTimecode,
+    scores,
+    best_pick: item.best_pick === true,
+    on_screen_text: optionalText(item.on_screen_text, 80),
+    visual: optionalText(item.visual, 200),
+  };
+};
+
+const averageScore = (hook: HookResult): number =>
+  (hook.scores.curiosity +
+    hook.scores.clarity +
+    hook.scores.scroll_stop +
+    hook.scores.platform_fit) /
+  4;
+
+// A missing or duplicated best pick is repaired here instead of costing a retry.
+const normalizeBestPick = (hooks: HookResult[]): HookResult[] => {
+  if (hooks.filter((hook) => hook.best_pick).length === 1) return hooks;
+
+  const best = hooks.reduce((top, hook) =>
+    averageScore(hook) > averageScore(top) ? hook : top,
+  );
+  return hooks.map((hook) => ({ ...hook, best_pick: hook === best }));
+};
+
 const parseHooksPayload = (
   rawText: string,
   expectedTimecode: HookTimecode,
@@ -183,74 +249,88 @@ const parseHooksPayload = (
     return null;
   }
 
-  const allowedTimecodes: HookTimecode[] = ['00:00–00:05', '00:00–00:08'];
-  const seenFrameworks = new Set<HookFramework>();
   const hooks: HookResult[] = [];
-  let bestPickCount = 0;
 
   for (const item of parsed.hooks) {
-    if (!isRecord(item)) {
-      console.error('[HookLab] Hook item is not a record.');
+    const hook = parseHookItem(item, expectedTimecode);
+
+    if (!hook) {
+      console.error('[HookLab] Invalid hook item.');
+      return null;
+    }
+    if (hooks.some((seen) => seen.framework === hook.framework)) {
+      console.error(`[HookLab] Duplicate framework: ${hook.framework}`);
       return null;
     }
 
-    const scores = parseScores(item.scores);
-
-    if (!isHookFramework(item.framework)) {
-      console.error('[HookLab] Invalid framework.');
-      return null;
-    }
-    if (typeof item.text !== 'string' || item.text.trim().length === 0) {
-      console.error('[HookLab] Invalid hook text.');
-      return null;
-    }
-    if (typeof item.why !== 'string' || item.why.trim().length === 0) {
-      console.error('[HookLab] Invalid hook explanation.');
-      return null;
-    }
-    if (!allowedTimecodes.includes(item.timecode as HookTimecode)) {
-      console.error('[HookLab] Invalid timecode.');
-      return null;
-    }
-    if (scores === null) {
-      console.error('[HookLab] Invalid scores.');
-      return null;
-    }
-    if (typeof item.best_pick !== 'boolean') {
-      console.error('[HookLab] Invalid best_pick.');
-      return null;
-    }
-    if (seenFrameworks.has(item.framework)) {
-      console.error('[HookLab] Duplicate framework:', item.framework);
-      return null;
-    }
-
-    if (item.best_pick) {
-      bestPickCount += 1;
-    }
-
-    seenFrameworks.add(item.framework);
-    hooks.push({
-      framework: item.framework,
-      text: item.text.trim(),
-      why: item.why.trim(),
-      timecode: expectedTimecode,
-      scores,
-      best_pick: item.best_pick,
-      on_screen_text: optionalText(item.on_screen_text, 80),
-      visual: optionalText(item.visual, 200),
-    });
+    hooks.push(hook);
   }
 
   if (
     hooks.length !== hookFrameworks.length ||
-    bestPickCount !== 1 ||
-    !hookFrameworks.every((framework) => seenFrameworks.has(framework))
+    !hookFrameworks.every((framework) =>
+      hooks.some((hook) => hook.framework === framework),
+    )
   ) {
     return null;
   }
 
-  return { hooks };
+  return { hooks: normalizeBestPick(hooks) };
+};
+
+/**
+ * Pulls every complete object out of the "hooks" array of a partial JSON
+ * stream, so finished hooks can be shown while the rest are still generating.
+ */
+export const extractStreamedHooks = (
+  partialText: string,
+  expectedTimecode: HookTimecode,
+): HookResult[] => {
+  const keyIndex = partialText.indexOf('"hooks"');
+  if (keyIndex === -1) return [];
+  const arrayStart = partialText.indexOf('[', keyIndex);
+  if (arrayStart === -1) return [];
+
+  const hooks: HookResult[] = [];
+  let depth = 0;
+  let objectStart = -1;
+  let inString = false;
+  let escaped = false;
+
+  for (let index = arrayStart + 1; index < partialText.length; index += 1) {
+    const character = partialText[index];
+
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (character === '\\') escaped = true;
+      else if (character === '"') inString = false;
+      continue;
+    }
+
+    if (character === '"') inString = true;
+    else if (character === '{') {
+      if (depth === 0) objectStart = index;
+      depth += 1;
+    } else if (character === '}') {
+      depth -= 1;
+      if (depth === 0 && objectStart !== -1) {
+        try {
+          const hook = parseHookItem(
+            JSON.parse(partialText.slice(objectStart, index + 1)),
+            expectedTimecode,
+          );
+          if (hook) hooks.push(hook);
+        } catch {
+          /* An unparseable object is skipped; the final validation decides. */
+        }
+        objectStart = -1;
+      }
+    } else if (character === ']' && depth === 0) {
+      break;
+    }
+  }
+
+  return hooks;
 };
 
 const parseRoastCritique = (value: unknown): RoastCritique | null => {
@@ -421,6 +501,24 @@ const parseComparePayload = (rawText: string): CompareHooksResponse | null => {
   };
 };
 
+export const maxNicheLength = 60;
+
+// The niche is user text placed inside a prompt: keep it short and on one line.
+export const normalizeNiche = (value: unknown): string | undefined => {
+  if (typeof value !== 'string') return undefined;
+  const cleaned = value
+    .replace(/[\r\n\t"`]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, maxNicheLength);
+  return cleaned.length > 0 ? cleaned : undefined;
+};
+
+const nicheLine = (request: GenerateHooksRequest): string =>
+  request.niche
+    ? `\nNICHE: "${request.niche}" — use the vocabulary and reference points this niche's viewers recognise. The SOURCE topic still wins if they differ.`
+    : '';
+
 const validateGenerateBody = (
   body: unknown,
 ): GenerateHooksRequest | { error: string } => {
@@ -474,9 +572,15 @@ const validateGenerateBody = (
     return { error: 'One or more controls are invalid.' };
   }
 
+  if (body.niche !== undefined && typeof body.niche !== 'string') {
+    return { error: 'One or more controls are invalid.' };
+  }
+  const niche = normalizeNiche(body.niche);
+
   return {
     script: trimmedScript,
     hookB: hookBData,
+    ...(niche ? { niche } : {}),
     platform: body.platform,
     tone: body.tone,
     audience: body.audience,
@@ -597,7 +701,7 @@ PLATFORM: ${request.platform}
 Platform rules: ${platformDirections[request.platform] ?? 'Short-form video. Hook must stop the scroll instantly.'}
 
 TONE: ${request.tone} — ${toneDirections[request.tone] ?? 'Engaging and clear.'}
-AUDIENCE: ${request.audience} — ${audienceDirections[request.audience]}
+AUDIENCE: ${request.audience} — ${audienceDirections[request.audience]}${nicheLine(request)}
 INTENSITY: ${request.intensity} — ${intensityDirections[request.intensity] ?? 'Confident and direct.'}
 LANGUAGE: ${languageDirections[request.language] ?? 'Write in English.'}
 
@@ -616,8 +720,7 @@ CRITICAL RULES:
 - Set exactly one item to "best_pick": true. Pick the strongest default choice for ${request.platform}.
 - Keep every hook short enough to say inside ${request.hookWindow} seconds.
 - Every hook should include at least one concrete source-specific noun, entity, or fact when natural.
-- The timecode must always be "${hookWindowTimecodes[request.hookWindow]}".
-- "why" must be 1-2 short sentences explaining the attention mechanism. Specific to this hook, not generic praise.
+- "why" is one short sentence (at most 15 words) naming the attention mechanism. Specific to this hook, not generic praise.
 - Scores must be integers from 0 to 100.
 - Score curiosity by unanswered tension, clarity by instant understanding, scroll_stop by pause power, and platform_fit by pacing match.
 - Do not include quotation marks around the spoken hook unless the line itself needs them.
@@ -630,7 +733,6 @@ REQUIRED JSON SHAPE:
       "framework": "CURIOSITY GAP",
       "text": "the rewritten hook here",
       "why": "why this works for this specific script and platform",
-      "timecode": "${hookWindowTimecodes[request.hookWindow]}",
       "scores": {
         "curiosity": 85,
         "clarity": 78,
@@ -690,7 +792,7 @@ Rules:
 - Keep the hook short enough to say inside ${request.hookWindow} seconds.
 - Apply the direction clearly without changing the framework.
 ${overlayRules}
-- "why" must be 1-2 short sentences explaining the attention mechanism.
+- "why" is one short sentence (at most 15 words) naming the attention mechanism.
 - Scores must be integers from 0 to 100.
 `.trim();
 
@@ -722,7 +824,7 @@ Hook window: ${request.hookWindow} seconds
 
 Platform direction: ${platformDirections[request.platform]}
 Tone direction: ${toneDirections[request.tone]}
-Audience direction: ${audienceDirections[request.audience]}
+Audience direction: ${audienceDirections[request.audience]}${nicheLine(request)}
 Intensity direction: ${intensityDirections[request.intensity]}
 Language direction: ${languageDirections[request.language]}
 
@@ -744,7 +846,6 @@ Return exactly this shape:
       "framework": "CURIOSITY GAP",
       "text": "...",
       "why": "...",
-      "timecode": "${hookWindowTimecodes[request.hookWindow]}",
       "scores": {
         "curiosity": 88,
         "clarity": 72,
@@ -773,8 +874,7 @@ Hooks rules:
 - Every hook must clearly be a rewrite of the EXISTING HOOK, not a generic hook template.
 - Every hook should include at least one concrete source-specific noun, entity, or fact when natural.
 - Do not add unsupported numeric claims. Reuse only numbers/facts already present in the EXISTING HOOK.
-- The timecode must always be "${hookWindowTimecodes[request.hookWindow]}".
-- "why" must be 1-2 short sentences explaining the attention mechanism, not generic praise.
+- "why" is one short sentence (at most 15 words) naming the attention mechanism, not generic praise.
 - Scores must be integers from 0 to 100.
 - Score curiosity by unanswered tension, clarity by instant understanding, scroll_stop by pause power, and platform_fit by pacing match.
 - Do not include quotation marks around the spoken hook unless the line itself needs them.
@@ -819,7 +919,7 @@ CRITICAL RULES:
 
 Platform: ${request.platform}
 Tone: ${request.tone}
-Audience: ${request.audience}
+Audience: ${request.audience}${nicheLine(request)}
 Intensity: ${request.intensity}
 Language: ${request.language}
 
@@ -884,6 +984,13 @@ const extractGeminiText = (
   return text.length > 0 ? text : null;
 };
 
+// Streamed chunks split mid-word, so they must be joined exactly as sent.
+const extractGeminiChunk = (payload: GeminiGenerateContentResponse): string =>
+  payload.candidates
+    ?.flatMap((candidate) => candidate.content?.parts ?? [])
+    .map((part) => part.text ?? '')
+    .join('') ?? '';
+
 export class GeminiApiError extends Error {
   constructor(
     public readonly status: number,
@@ -894,71 +1001,167 @@ export class GeminiApiError extends Error {
   }
 }
 
+export interface GeminiCallOptions {
+  /** Gemini response schema; enforces the JSON shape so fewer replies need a retry. */
+  schema?: GeminiSchema;
+  /** When set, the reply is streamed and called with the accumulated text. */
+  onText?: (accumulatedText: string) => void;
+}
+
+const readGeminiError = async (response: Response): Promise<never> => {
+  const body = await response.text();
+  let errMsg = 'Gemini API error';
+  try {
+    const errPayload = JSON.parse(body) as Record<string, unknown>;
+    if (
+      errPayload &&
+      typeof errPayload.error === 'object' &&
+      errPayload.error !== null &&
+      typeof (errPayload.error as Record<string, unknown>).message === 'string'
+    ) {
+      errMsg = (errPayload.error as Record<string, unknown>).message as string;
+    }
+  } catch {
+    // ignore
+  }
+  console.error(`[HookLab] Gemini error status: ${response.status}`);
+  throw new GeminiApiError(response.status, errMsg);
+};
+
+// Accumulates the text parts of a server-sent-event stream from Gemini.
+const readGeminiStream = async (
+  response: Response,
+  onText: (accumulatedText: string) => void,
+  onActivity: () => void,
+): Promise<string | null> => {
+  if (!response.body) return null;
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let text = '';
+
+  for (;;) {
+    const { done, value } = await reader.read();
+    onActivity();
+    buffer += decoder.decode(value, { stream: !done });
+
+    const events = buffer.split(/\r?\n\r?\n/);
+    buffer = done ? '' : (events.pop() ?? '');
+
+    for (const event of events) {
+      const data = event
+        .split(/\r?\n/)
+        .filter((line) => line.startsWith('data:'))
+        .map((line) => line.slice(5).trim())
+        .join('');
+      if (!data) continue;
+      try {
+        const chunk = extractGeminiChunk(
+          JSON.parse(data) as GeminiGenerateContentResponse,
+        );
+        if (chunk) {
+          text += chunk;
+          onText(text);
+        }
+      } catch {
+        /* Ignore keep-alive or malformed events; final parsing validates. */
+      }
+    }
+
+    if (done) break;
+  }
+
+  return text.trim() || null;
+};
+
 const callGemini = async (
   apiKey: string,
   model: string,
   systemPrompt: string,
   userPrompt: string,
+  options: GeminiCallOptions = {},
 ): Promise<string | null> => {
   const start = Date.now();
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
+  const method = options.onText
+    ? 'streamGenerateContent?alt=sse&'
+    : 'generateContent?';
+  const controller = new AbortController();
+  const timeout = (): void =>
+    controller.abort(new DOMException('Gemini timed out', 'TimeoutError'));
+  const totalTimer = setTimeout(timeout, geminiTimeoutMs);
+  // Only streams get an idle limit; a plain reply is silent until it is done.
+  let idleTimer: ReturnType<typeof setTimeout> | undefined;
+  const resetIdle = (): void => {
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(timeout, geminiStreamIdleMs);
+  };
+  if (options.onText) resetIdle();
+  let response: Response;
+
+  try {
+    response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:${method}key=${encodeURIComponent(apiKey)}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        signal: controller.signal,
+        body: JSON.stringify({
+          systemInstruction: {
+            parts: [{ text: systemPrompt }],
+          },
+          contents: [
+            {
+              role: 'user',
+              parts: [{ text: userPrompt }],
+            },
+          ],
+          generationConfig: {
+            // Headroom for Devanagari output, which uses more tokens per word.
+            maxOutputTokens: 4096,
+            temperature: 0.7,
+            responseMimeType: 'application/json',
+            ...(options.schema ? { responseSchema: options.schema } : {}),
+            thinkingConfig: {
+              thinkingBudget: 0,
+            },
+          },
+        }),
       },
-      body: JSON.stringify({
-        systemInstruction: {
-          parts: [{ text: systemPrompt }],
-        },
-        contents: [
-          {
-            role: 'user',
-            parts: [{ text: userPrompt }],
-          },
-        ],
-        generationConfig: {
-          maxOutputTokens: 2600,
-          temperature: 0.7,
-          responseMimeType: 'application/json',
-          thinkingConfig: {
-            thinkingBudget: 0,
-          },
-        },
-      }),
-    },
-  );
+    );
 
-  if (!response.ok) {
-    const body = await response.text();
-    let errMsg = 'Gemini API error';
-    try {
-      const errPayload = JSON.parse(body) as Record<string, unknown>;
-      if (
-        errPayload &&
-        typeof errPayload.error === 'object' &&
-        errPayload.error !== null &&
-        typeof (errPayload.error as Record<string, unknown>).message ===
-          'string'
-      ) {
-        errMsg = (errPayload.error as Record<string, unknown>)
-          .message as string;
-      }
-    } catch {
-      // ignore
+    if (!response.ok) {
+      return await readGeminiError(response);
     }
-    console.error(`[HookLab] Gemini error status: ${response.status}`);
-    throw new GeminiApiError(response.status, errMsg);
-  }
 
-  const payload = (await response.json()) as GeminiGenerateContentResponse;
-  const text = extractGeminiText(payload);
-  console.info(`[HookLab] Gemini response parsed in ${Date.now() - start}ms`);
-  if (!text) {
-    console.warn('[HookLab] Gemini returned 200 but no text was extracted.');
+    const text = options.onText
+      ? await readGeminiStream(response, options.onText, resetIdle)
+      : extractGeminiText(
+          (await response.json()) as GeminiGenerateContentResponse,
+        );
+    console.info(`[HookLab] Gemini response parsed in ${Date.now() - start}ms`);
+    if (!text) {
+      console.warn('[HookLab] Gemini returned 200 but no text was extracted.');
+    }
+    return text;
+  } catch (error) {
+    if (
+      error instanceof DOMException &&
+      (error.name === 'TimeoutError' || error.name === 'AbortError')
+    ) {
+      console.error('[HookLab] Gemini call timed out.');
+      throw new GeminiApiError(
+        504,
+        'The AI took too long to respond. Please try again.',
+      );
+    }
+    throw error;
+  } finally {
+    clearTimeout(totalTimer);
+    clearTimeout(idleTimer);
   }
-  return text;
 };
 
 export class AllKeysExhaustedError extends Error {
@@ -973,6 +1176,7 @@ export const callGeminiWithRotation = async (
   model: string,
   systemPrompt: string,
   userPrompt: string,
+  options: GeminiCallOptions = {},
 ): Promise<string | null> => {
   let lastError: GeminiApiError | null = null;
 
@@ -987,7 +1191,13 @@ export const callGeminiWithRotation = async (
     console.info(`[HookLab] Trying key ${i + 1}/${apiKeys.length}`);
 
     try {
-      const text = await callGemini(key, model, systemPrompt, userPrompt);
+      const text = await callGemini(
+        key,
+        model,
+        systemPrompt,
+        userPrompt,
+        options,
+      );
       console.info(
         `[HookLab] Key ${i + 1} succeeded in ${Date.now() - start}ms`,
       );
@@ -1028,6 +1238,7 @@ export const createGenerateHooksResponse = async ({
   body,
   ip = 'unknown',
   model = defaultGeminiModel,
+  onEvent,
 }: GenerateHooksHandlerOptions): Promise<
   HandlerResult<GenerateHooksResponse>
 > => {
@@ -1058,6 +1269,27 @@ export const createGenerateHooksResponse = async ({
     };
   }
 
+  // Streams each finished hook to the client; a retry clears what was shown.
+  const streamingOptions = (
+    schema: GeminiSchema,
+    attempt: number,
+  ): GeminiCallOptions => {
+    if (!onEvent) return { schema };
+    if (attempt > 0) onEvent({ type: 'reset' });
+
+    let sent = 0;
+    const timecode = hookWindowTimecodes[request.hookWindow];
+    return {
+      schema,
+      onText: (accumulatedText) => {
+        const streamed = extractStreamedHooks(accumulatedText, timecode);
+        for (; sent < streamed.length; sent += 1) {
+          onEvent({ type: 'hook', hook: streamed[sent] });
+        }
+      },
+    };
+  };
+
   try {
     let generatedHooks: GenerateHooksResponse | null = null;
     let geminiError: { status: number; message: string } | null = null;
@@ -1070,6 +1302,7 @@ export const createGenerateHooksResponse = async ({
             model,
             buildCompareSystemPrompt(request),
             buildCompareUserPrompt(request, attempt > 0),
+            { schema: compareSchema },
           );
           const parsedCompare = text ? parseComparePayload(text) : null;
 
@@ -1085,8 +1318,7 @@ export const createGenerateHooksResponse = async ({
             return {
               status: 429,
               payload: {
-                error:
-                  'Dont harass, the API limit is over. So please hold on, Hamza.',
+                error: quotaExhaustedMessage,
               },
             };
           }
@@ -1105,6 +1337,7 @@ export const createGenerateHooksResponse = async ({
             model,
             buildRoastSystemPrompt(request),
             buildRoastUserPrompt(request, attempt > 0),
+            streamingOptions(roastSchema, attempt),
           );
           const parsedRoast = text
             ? parseRoastPayload(text, hookWindowTimecodes[request.hookWindow])
@@ -1133,8 +1366,7 @@ export const createGenerateHooksResponse = async ({
             return {
               status: 429,
               payload: {
-                error:
-                  'Dont harass, the API limit is over. So please hold on, Hamza.',
+                error: quotaExhaustedMessage,
               },
             };
           }
@@ -1153,6 +1385,7 @@ export const createGenerateHooksResponse = async ({
             model,
             buildGenerateSystemPrompt(request),
             buildGenerateUserPrompt(request, attempt > 0),
+            streamingOptions(hooksSchema, attempt),
           );
           const parsedHooks = text
             ? parseHooksPayload(text, hookWindowTimecodes[request.hookWindow])
@@ -1176,8 +1409,7 @@ export const createGenerateHooksResponse = async ({
             return {
               status: 429,
               payload: {
-                error:
-                  'Dont harass, the API limit is over. So please hold on, Hamza.',
+                error: quotaExhaustedMessage,
               },
             };
           }
@@ -1262,6 +1494,7 @@ export const createRewriteHookResponse = async ({
       model,
       buildRewriteSystemPrompt(request),
       request.hook,
+      { schema: rewriteSchema },
     );
     const rewrittenHook = text ? parseRewritePayload(text) : null;
 
@@ -1279,8 +1512,7 @@ export const createRewriteHookResponse = async ({
       return {
         status: 429,
         payload: {
-          error:
-            'Dont harass, the API limit is over. So please hold on, Hamza.',
+          error: quotaExhaustedMessage,
         },
       };
     }
