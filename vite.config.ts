@@ -7,6 +7,10 @@ import {
   createRewriteHookResponse,
   defaultGeminiModel,
 } from './src/server/hookGeneration.js';
+import {
+  streamGenerateHooks,
+  wantsHookStream,
+} from './src/server/hookStream.js';
 import { createExpandHookResponse } from './src/server/scriptExpansion.js';
 
 const readRequestBody = async (request: IncomingMessage): Promise<unknown> => {
@@ -74,13 +78,19 @@ const localApiPlugin = (envApiKeys: string[], geminiModel: string): Plugin => ({
         const body = await readRequestBody(request);
         const apiKeys =
           envApiKeys.length > 0 ? envApiKeys : getApiKeysFromEnv();
-        const result = await createGenerateHooksResponse({
+        const options = {
           apiKeys,
           body,
           ip: request.socket.remoteAddress ?? 'unknown',
           model: geminiModel,
-        });
+        };
 
+        if (wantsHookStream(request.headers.accept)) {
+          await streamGenerateHooks(response, options);
+          return;
+        }
+
+        const result = await createGenerateHooksResponse(options);
         sendJson(response, result.status, result.payload);
       } catch (error) {
         sendJson(response, 500, {
