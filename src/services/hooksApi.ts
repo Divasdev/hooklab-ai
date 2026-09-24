@@ -219,14 +219,74 @@ const throwApiError = (status: number, payload: unknown): never => {
   );
 };
 
+const readHookStream = async (
+  response: Response,
+  onPreview: (hooks: HookResult[]) => void,
+): Promise<GenerateHooksResponse> => {
+  if (!response.body) {
+    throw new HookLabApiError("Couldn't read the hook cut. Try again.", 500);
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let preview: HookResult[] = [];
+
+  for (;;) {
+    const { done, value } = await reader.read();
+    buffer += decoder.decode(value, { stream: !done });
+    const lines = buffer.split('\n');
+    buffer = done ? '' : (lines.pop() ?? '');
+
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      const event = JSON.parse(line) as unknown;
+      if (!isRecord(event)) continue;
+
+      if (event.type === 'hook' && isHookResult(event.hook)) {
+        preview = [...preview, event.hook];
+        onPreview(preview);
+      } else if (event.type === 'reset') {
+        preview = [];
+        onPreview(preview);
+      } else if (event.type === 'result' && typeof event.status === 'number') {
+        if (event.status < 200 || event.status >= 300) {
+          throwApiError(event.status, event.payload);
+        }
+        return parseGenerateHooksResponse(event.payload);
+      }
+    }
+
+    if (done) break;
+  }
+
+  throw new HookLabApiError("Couldn't read the hook cut. Try again.", 500);
+};
+
+/**
+ * With `onPreview`, hooks are streamed and reported as each one finishes;
+ * the returned value is always the complete, validated response.
+ */
 export const generateHooks = async (
   request: GenerateHooksRequest,
+  onPreview?: (hooks: HookResult[]) => void,
 ): Promise<GenerateHooksResponse> => {
   const response = await fetch('/api/generate-hooks', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(onPreview ? { Accept: 'application/x-ndjson' } : {}),
+    },
     body: JSON.stringify(request),
   });
+
+  if (
+    onPreview &&
+    response.ok &&
+    response.headers.get('Content-Type')?.includes('application/x-ndjson')
+  ) {
+    return readHookStream(response, onPreview);
+  }
 
   const payload = await readJson(response);
 
