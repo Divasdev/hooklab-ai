@@ -82,6 +82,10 @@ export interface HookResult {
   timecode: HookTimecode;
   scores: HookScores;
   best_pick: boolean;
+  /** Caption overlay for the first frame; optional for older history entries. */
+  on_screen_text?: string;
+  /** First-frame shot direction; optional for older history entries. */
+  visual?: string;
 }
 
 export interface RoastCritique {
@@ -147,6 +151,8 @@ export interface RewriteHookResponse {
   text: string;
   why: string;
   scores: HookScores;
+  on_screen_text?: string;
+  visual?: string;
 }
 
 export interface ScriptOutlineBeat {
