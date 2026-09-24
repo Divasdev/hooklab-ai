@@ -4,6 +4,8 @@ import type { HookScores } from '../types/hooks';
 
 interface GradeBreakdownProps {
   scores: HookScores;
+  /** Result lists show the AI-estimate note once instead of on every card. */
+  showNote?: boolean;
 }
 
 const scoreItems: Array<{
@@ -34,7 +36,10 @@ const scoreItems: Array<{
   },
 ];
 
-export function GradeBreakdown({ scores }: GradeBreakdownProps) {
+export function GradeBreakdown({
+  scores,
+  showNote = true,
+}: GradeBreakdownProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isRevealed, setIsRevealed] = useState(false);
 
@@ -69,7 +74,7 @@ export function GradeBreakdown({ scores }: GradeBreakdownProps) {
   }, []);
 
   return (
-    <div ref={containerRef} className="grid gap-3 sm:grid-cols-2">
+    <div ref={containerRef} className="grid grid-cols-2 gap-x-4 gap-y-2.5">
       {scoreItems.map((item, index) => {
         const value = scores[item.key];
 
@@ -102,9 +107,11 @@ export function GradeBreakdown({ scores }: GradeBreakdownProps) {
           </div>
         );
       })}
-      <p className="text-[11px] leading-5 text-muted sm:col-span-2">
-        AI estimates, not measured retention or a prediction of views.
-      </p>
+      {showNote ? (
+        <p className="col-span-2 text-[11px] leading-5 text-muted">
+          AI estimates, not measured retention or a prediction of views.
+        </p>
+      ) : null}
     </div>
   );
 }
