@@ -17,7 +17,8 @@ export const buildShareUrl = (hook: SharedHook, origin: string): string => {
     p: hook.platform,
   });
 
-  return `${origin}/?${params.toString()}`;
+  // /s serves link-preview tags for crawlers, then opens the app at /?h=…
+  return `${origin}/s?${params.toString()}`;
 };
 
 export const parseSharedHook = (search: string): SharedHook | null => {
