@@ -7,6 +7,7 @@ import {
   savedHooksKey,
   type SavedHook,
 } from '../utils/savedHooks';
+import { trackEvent } from '../utils/analytics';
 
 export function useSavedHooks() {
   const [savedHooks, setSavedHooks] = useState<SavedHook[]>([]);
@@ -58,6 +59,7 @@ export function useSavedHooks() {
       );
       if (existing) return current.filter((hook) => hook.id !== existing.id);
       if (current.length >= savedHookLimit) throw new Error('Library full');
+      trackEvent('hook_saved', { framework, platform });
       return [
         {
           id: crypto.randomUUID(),
