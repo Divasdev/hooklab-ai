@@ -1,7 +1,13 @@
-import { RotateCcw } from 'lucide-react';
+import { Clapperboard, RotateCcw, Timer, Type } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
-import type { HookResult, Platform, RewriteDirection } from '../types/hooks';
+import type {
+  HookResult,
+  HookWindow,
+  Platform,
+  RewriteDirection,
+} from '../types/hooks';
+import { estimateSpeakSeconds, speakFit } from '../utils/speakTime';
 import { GradeBreakdown } from './GradeBreakdown';
 import { RewriteChips } from './RewriteChips';
 import { HookActions } from './HookActions';
@@ -10,6 +16,7 @@ interface HookCardProps {
   hook: HookResult;
   index: number;
   platform: Platform;
+  hookWindow: HookWindow;
   canUndo: boolean;
   isRewriting: boolean;
   isExpanding: boolean;
@@ -25,6 +32,7 @@ export function HookCard({
   hook,
   index,
   platform,
+  hookWindow,
   canUndo,
   isRewriting,
   isExpanding,
@@ -51,6 +59,15 @@ export function HookCard({
     return () => window.clearTimeout(timeout);
   }, [hook.text]);
 
+  const speakSeconds = estimateSpeakSeconds(hook.text);
+  const fit = speakFit(speakSeconds, hookWindow);
+  const fitLabel =
+    fit === 'over'
+      ? `over ${hookWindow}s window`
+      : fit === 'tight'
+        ? `tight for ${hookWindow}s`
+        : `fits ${hookWindow}s`;
+
   const cardStyle = hook.best_pick
     ? {
         boxShadow: '0 0 0 1.5px var(--accent-amber), var(--shadow-amber-glow)',
@@ -72,9 +89,24 @@ export function HookCard({
           <p className="font-mono text-xs font-semibold uppercase tracking-[0.16em] text-amber">
             {hook.framework}
           </p>
-          <p className="mt-2 inline-flex rounded-[3px] border border-amber/30 bg-amber/10 px-2 py-1 font-mono text-[11px] text-amber">
-            {hook.timecode}
-          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <p className="inline-flex rounded-[3px] border border-amber/30 bg-amber/10 px-2 py-1 font-mono text-[11px] text-amber">
+              {hook.timecode}
+            </p>
+            <p
+              title="Estimated at a typical short-form speaking pace"
+              className={`inline-flex items-center gap-1 rounded-[3px] border px-2 py-1 font-mono text-[11px] ${
+                fit === 'over'
+                  ? 'border-red/40 bg-red/10 text-red'
+                  : fit === 'tight'
+                    ? 'border-amber/30 bg-amber/10 text-amber'
+                    : 'border-cyan/30 bg-cyan/10 text-cyan'
+              }`}
+            >
+              <Timer size={12} aria-hidden="true" />≈{speakSeconds}s spoken ·{' '}
+              {fitLabel}
+            </p>
+          </div>
         </div>
       </div>
 
@@ -90,6 +122,33 @@ export function HookCard({
           <span className="font-semibold text-primary/80">Why it works:</span>{' '}
           {hook.why}
         </p>
+        {hook.on_screen_text || hook.visual ? (
+          <div className="mt-4 space-y-2 rounded-[4px] border border-white/10 bg-bg/40 p-3 text-sm leading-5">
+            <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted">
+              First frame
+            </p>
+            <dl className="space-y-2">
+              {hook.on_screen_text ? (
+                <div className="flex gap-2">
+                  <dt className="shrink-0 pt-0.5 text-cyan">
+                    <Type size={14} aria-label="On-screen text" />
+                  </dt>
+                  <dd className="font-semibold text-primary">
+                    {hook.on_screen_text}
+                  </dd>
+                </div>
+              ) : null}
+              {hook.visual ? (
+                <div className="flex gap-2">
+                  <dt className="shrink-0 pt-0.5 text-cyan">
+                    <Clapperboard size={14} aria-label="Visual" />
+                  </dt>
+                  <dd className="text-secondary">{hook.visual}</dd>
+                </div>
+              ) : null}
+            </dl>
+          </div>
+        ) : null}
       </div>
 
       <div className="mt-6">
