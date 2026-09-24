@@ -21,12 +21,14 @@ interface ControlsPanelProps {
   intensity: Intensity;
   language: HookLanguage;
   hookWindow: HookWindow;
+  niche: string;
   disabled?: boolean;
   onToneChange: (tone: Tone) => void;
   onAudienceChange: (audience: Audience) => void;
   onIntensityChange: (intensity: Intensity) => void;
   onLanguageChange: (language: HookLanguage) => void;
   onHookWindowChange: (hookWindow: HookWindow) => void;
+  onNicheChange: (niche: string) => void;
 }
 
 interface SegmentGroupProps<TValue extends string | number> {
@@ -80,12 +82,14 @@ export function ControlsPanel({
   intensity,
   language,
   hookWindow,
+  niche,
   disabled = false,
   onToneChange,
   onAudienceChange,
   onIntensityChange,
   onLanguageChange,
   onHookWindowChange,
+  onNicheChange,
 }: ControlsPanelProps) {
   const [isOpen, setIsOpen] = useState(false);
   const panelId = useId();
@@ -109,6 +113,7 @@ export function ControlsPanel({
             Fine-tune
           </span>
           <span className="block truncate text-xs text-muted">
+            {niche.trim() ? `${niche.trim()} · ` : ''}
             {tone} · {audience} · {intensity} · {language} · {hookWindow} sec
           </span>
         </span>
@@ -120,6 +125,20 @@ export function ControlsPanel({
       </button>
       <Reveal open={isOpen} id={panelId}>
         <div className="grid gap-4 border-t border-white/10 px-4 pb-4 pt-4 sm:grid-cols-2">
+          <label className="block sm:col-span-2">
+            <span className="mb-2 block text-xs font-medium text-muted">
+              Your niche <span className="font-normal">(optional)</span>
+            </span>
+            <input
+              type="text"
+              value={niche}
+              maxLength={60}
+              disabled={disabled}
+              onChange={(event) => onNicheChange(event.target.value)}
+              placeholder="e.g. home cooking, UPSC prep, indie SaaS"
+              className="min-h-11 w-full rounded-md border border-white/10 bg-bg/60 px-3 text-sm text-primary outline-none transition-colors placeholder:text-muted/70 focus:border-cyan focus:ring-2 focus:ring-cyan/30 disabled:opacity-60"
+            />
+          </label>
           <SegmentGroup
             label="Tone"
             values={tones}
