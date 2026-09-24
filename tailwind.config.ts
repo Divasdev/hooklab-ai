@@ -49,6 +49,10 @@ const config: Config = {
           '50%': { opacity: '0.65' },
           '100%': { opacity: '0.35' },
         },
+        menuIn: {
+          '0%': { opacity: '0', transform: 'translateY(-4px) scale(0.97)' },
+          '100%': { opacity: '1', transform: 'translateY(0) scale(1)' },
+        },
         triggerPulse: {
           '0%, 100%': {
             transform: 'scale(1)',
@@ -64,6 +68,7 @@ const config: Config = {
         cardIn: 'cardIn 480ms cubic-bezier(0.16, 1, 0.3, 1) both',
         drawLine: 'drawLine 780ms cubic-bezier(0.22, 1, 0.36, 1) both',
         skeletonShimmer: 'skeletonShimmer 1.45s ease-in-out infinite',
+        menuIn: 'menuIn 140ms ease-out both',
         triggerPulse: 'triggerPulse 600ms ease-in-out 2',
       },
     },
