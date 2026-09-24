@@ -104,6 +104,8 @@ export interface GenerateHooksRequest {
   language: HookLanguage;
   hookWindow: HookWindow;
   mode: Mode;
+  /** Free-text niche such as "home cooking"; sharpens wording beyond the preset audience. */
+  niche?: string;
 }
 
 export interface CompareAnalysis {
@@ -191,5 +193,5 @@ export interface HistoryEntry extends GenerateHooksRequest {
 export const exportFormats = ['json', 'csv', 'txt', 'markdown'] as const;
 export type ExportFormat = (typeof exportFormats)[number];
 
-export type HookMetricKey = 'curiosity' | 'clarity' | 'scroll_stop' | 'platform_fit';
-
+export type HookMetricKey =
+  'curiosity' | 'clarity' | 'scroll_stop' | 'platform_fit';
