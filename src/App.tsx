@@ -30,7 +30,10 @@ import { type ScriptTemplate } from './data/templates';
 import { useHistory } from './hooks/useHistory';
 import { useSavedHooks } from './hooks/useSavedHooks';
 import { SavedHooksDrawer } from './components/SavedHooksDrawer';
+import { PreviewHookCard } from './components/PreviewHookCard';
+import { SayItPractice } from './components/SayItPractice';
 import { SharedHookCard } from './components/SharedHookCard';
+import { trackEvent } from './utils/analytics';
 import { readDraft, writeDraft } from './utils/draft';
 import { parseSharedHook, type SharedHook } from './utils/shareLink';
 import {
@@ -72,6 +75,7 @@ function App() {
   );
   const [mode, setMode] = useState<Mode>(initialDraft.mode);
   const [hookB, setHookB] = useState(initialDraft.hookB);
+  const [niche, setNiche] = useState(initialDraft.niche);
   const [sharedHook, setSharedHook] = useState<SharedHook | null>(() =>
     parseSharedHook(window.location.search),
   );
@@ -109,6 +113,10 @@ function App() {
     document.documentElement.dataset.theme === 'night' ? 'night' : 'default',
   );
   const resultsRef = useRef<HTMLDivElement>(null);
+  const loadingRef = useRef<HTMLDivElement>(null);
+  const [previewHooks, setPreviewHooks] = useState<HookResult[]>([]);
+  const [practiceHook, setPracticeHook] = useState<HookResult | null>(null);
+  const closePractice = useCallback(() => setPracticeHook(null), []);
   const { entries, saveEntry, deleteEntry, clearEntries } = useHistory();
   const library = useSavedHooks();
   const resultPlatform = currentRequest?.platform ?? platform;
@@ -153,6 +161,7 @@ function App() {
     language,
     hookWindow,
     mode,
+    ...(niche.trim() ? { niche: niche.trim() } : {}),
   });
 
   useEffect(() => {
@@ -194,6 +203,7 @@ function App() {
           language,
           hookWindow,
           mode,
+          niche,
         }),
       400,
     );
@@ -209,14 +219,30 @@ function App() {
     language,
     hookWindow,
     mode,
+    niche,
   ]);
 
   useEffect(() => {
     // Keep the address bar clean so a refresh doesn't reopen the shared hook.
     if (parseSharedHook(window.location.search)) {
-      window.history.replaceState(null, '', window.location.pathname);
+      trackEvent('shared_link_opened');
+      window.history.replaceState(null, '', '/');
     }
   }, []);
+
+  const hasPreview = previewHooks.length > 0;
+  useEffect(() => {
+    const element = loadingRef.current;
+    if (!hasPreview || !element) return;
+    if (element.getBoundingClientRect().top < window.innerHeight * 0.6) return;
+
+    element.scrollIntoView({
+      behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches
+        ? 'auto'
+        : 'smooth',
+      block: 'start',
+    });
+  }, [hasPreview]);
 
   useEffect(() => {
     if (themePreference === 'night') {
@@ -240,6 +266,15 @@ function App() {
     setSurfaceError('Something went wrong on our end. Try again.');
   };
 
+  const trackGenerated = (request: GenerateHooksRequest): void =>
+    trackEvent('hooks_generated', {
+      mode: request.mode,
+      platform: request.platform,
+      language: request.language,
+      hookWindow: request.hookWindow,
+      hasNiche: Boolean(request.niche),
+    });
+
   const cutHooks = async (): Promise<void> => {
     const request = buildRequest();
 
@@ -259,7 +294,11 @@ function App() {
     setIsOutlineOpen(false);
 
     try {
-      const response = await generateHooks(request);
+      // Generate and Roast stream hooks in as they are written; Compare returns once.
+      const response = await generateHooks(
+        request,
+        request.mode === 'compare' ? undefined : setPreviewHooks,
+      );
 
       if (response.mode === 'compare') {
         setHooks([]);
@@ -269,6 +308,7 @@ function App() {
         setCurrentRequest(request);
         setSuccessfulResultId((currentId) => currentId + 1);
         saveEntry(request, undefined, undefined, response.compare);
+        trackGenerated(request);
       } else if (response.mode === 'roast') {
         setHooks(response.hooks);
         setRoast(response.roast);
@@ -277,6 +317,7 @@ function App() {
         setCurrentRequest(request);
         setSuccessfulResultId((currentId) => currentId + 1);
         saveEntry(request, response.hooks, response.roast);
+        trackGenerated(request);
       } else {
         setHooks(response.hooks);
         setRoast(null);
@@ -285,6 +326,7 @@ function App() {
         setCurrentRequest(request);
         setSuccessfulResultId((currentId) => currentId + 1);
         saveEntry(request, response.hooks);
+        trackGenerated(request);
       }
     } catch (caughtError) {
       setHooks([]);
@@ -294,6 +336,7 @@ function App() {
       handleError(caughtError);
     } finally {
       setIsLoading(false);
+      setPreviewHooks([]);
     }
   };
 
@@ -312,6 +355,7 @@ function App() {
         platform: resultPlatform,
         hookWindow: currentRequest?.hookWindow ?? hookWindow,
       });
+      trackEvent('hook_rewritten', { direction, platform: resultPlatform });
 
       setPreviousHooks((currentPreviousHooks) => ({
         ...currentPreviousHooks,
@@ -367,6 +411,7 @@ function App() {
 
       if (version !== resultVersion.current) return;
       setScriptOutline(response.outline);
+      trackEvent('outline_built', { platform: resultPlatform });
       setIsOutlineOpen(true);
     } catch (caughtError) {
       if (version !== resultVersion.current) return;
@@ -421,6 +466,7 @@ function App() {
     setLanguage(entry.language);
     setHookWindow(entry.hookWindow);
     setMode(entry.mode);
+    setNiche(entry.niche ?? '');
     setHooks(entry.hooks ?? []);
     setRoast(entry.roast ?? null);
     setCompareResult(entry.compare ?? null);
@@ -435,6 +481,7 @@ function App() {
       language: entry.language,
       hookWindow: entry.hookWindow,
       mode: entry.mode,
+      niche: entry.niche,
     });
     setInputError(null);
     setSurfaceError(null);
@@ -443,6 +490,7 @@ function App() {
   };
 
   const selectTemplate = (template: ScriptTemplate): void => {
+    trackEvent('template_used', { platform: template.defaults.platform });
     setScript(template.script);
     setPlatform(template.defaults.platform);
     setTone(template.defaults.tone);
@@ -546,7 +594,7 @@ function App() {
         </header>
 
         <section className="grid flex-1 gap-8 py-6 xl:grid-cols-[minmax(380px,0.8fr)_minmax(0,1.2fr)] xl:gap-10">
-          <div className="xl:sticky xl:top-6 xl:self-start">
+          <div className="min-w-0 xl:sticky xl:top-6 xl:self-start">
             <form
               className="space-y-5"
               onSubmit={(event) => {
@@ -630,12 +678,14 @@ function App() {
                 intensity={intensity}
                 language={language}
                 hookWindow={hookWindow}
+                niche={niche}
                 disabled={isLoading}
                 onToneChange={setTone}
                 onAudienceChange={setAudience}
                 onIntensityChange={setIntensity}
                 onLanguageChange={setLanguage}
                 onHookWindowChange={setHookWindow}
+                onNicheChange={setNiche}
               />
               <div className="space-y-2">
                 <button
@@ -676,7 +726,7 @@ function App() {
             </form>
           </div>
 
-          <section aria-live="polite" aria-busy={isLoading}>
+          <section className="min-w-0" aria-live="polite" aria-busy={isLoading}>
             <div className="mb-4 flex min-h-11 items-center justify-between gap-4">
               <div>
                 <h2 className="font-display text-lg font-semibold text-primary">
@@ -721,8 +771,14 @@ function App() {
             ) : null}
 
             {isLoading ? (
-              <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
-                {skeletonItems.map((item) => (
+              <div
+                ref={loadingRef}
+                className="grid scroll-mt-24 gap-4 md:grid-cols-2 md:scroll-mt-0 2xl:grid-cols-3"
+              >
+                {previewHooks.map((hook) => (
+                  <PreviewHookCard key={hook.framework} hook={hook} />
+                ))}
+                {skeletonItems.slice(previewHooks.length).map((item) => (
                   <SkeletonCard key={item} />
                 ))}
               </div>
@@ -797,6 +853,7 @@ function App() {
                         void rewriteCard(hook, direction);
                       }}
                       onUndo={() => undoRewrite(hook)}
+                      onPractice={() => setPracticeHook(hook)}
                       onExpand={() => {
                         void expandSelectedHook(
                           hook.framework,
@@ -895,6 +952,13 @@ function App() {
               : 'smooth',
           });
         }}
+      />
+
+      <SayItPractice
+        hook={practiceHook}
+        hookWindow={currentRequest?.hookWindow ?? hookWindow}
+        onClose={closePractice}
+        onPracticed={(fit) => trackEvent('practice_finished', { fit })}
       />
 
       <ScriptOutline
