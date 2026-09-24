@@ -27,6 +27,7 @@ export interface Draft {
   language: HookLanguage;
   hookWindow: HookWindow;
   mode: Mode;
+  niche: string;
 }
 
 export const defaultDraft: Draft = {
@@ -39,6 +40,7 @@ export const defaultDraft: Draft = {
   language: 'English',
   hookWindow: 5,
   mode: 'generate',
+  niche: '',
 };
 
 const pick = <T>(allowed: readonly T[], value: unknown, fallback: T): T =>
@@ -73,6 +75,7 @@ export const parseDraft = (raw: string | null): Draft => {
     language: pick(languages, record.language, defaultDraft.language),
     hookWindow: pick(hookWindows, record.hookWindow, defaultDraft.hookWindow),
     mode: pick(modes, record.mode, defaultDraft.mode),
+    niche: text(record.niche).slice(0, 60),
   };
 };
 
