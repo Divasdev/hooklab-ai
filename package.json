@@ -10,11 +10,13 @@
     "preview": "vite preview --host 0.0.0.0",
     "test:relevance": "node --experimental-strip-types scripts/relevance.test.mjs",
     "test:features": "node scripts/features.test.mjs",
+    "test:share": "node --experimental-strip-types --no-warnings scripts/share.test.mjs",
     "check": "node scripts/health-check.mjs",
     "format": "prettier --write ."
   },
   "dependencies": {
     "@vercel/analytics": "^2.0.1",
+    "@vercel/og": "^0.8.6",
     "@vitejs/plugin-react": "^4.3.4",
     "lucide-react": "^0.468.0",
     "react": "^18.3.1",
@@ -28,8 +30,8 @@
     "@types/react-dom": "^18.3.5",
     "@vercel/node": "^5.0.0",
     "autoprefixer": "^10.4.20",
-    "eslint": "^9.17.0",
     "esbuild": "^0.27.0",
+    "eslint": "^9.17.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-react-hooks": "^5.1.0",
     "eslint-plugin-react-refresh": "^0.4.16",
