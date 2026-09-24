@@ -4,6 +4,10 @@ import {
   createGenerateHooksResponse,
   defaultGeminiModel,
 } from '../src/server/hookGeneration.js';
+import {
+  streamGenerateHooks,
+  wantsHookStream,
+} from '../src/server/hookStream.js';
 
 export const maxDuration = 60;
 
@@ -63,38 +67,49 @@ export default async function handler(
 
   const VALID_PLATFORMS = ['YouTube Shorts', 'Instagram Reels', 'TikTok'];
   const body = (request.body as Record<string, unknown>) || {};
-  
-  const platform = typeof body.platform === 'string' ? body.platform : undefined;
+
+  const platform =
+    typeof body.platform === 'string' ? body.platform : undefined;
   const tone = typeof body.tone === 'string' ? body.tone : undefined;
-  const audience = typeof body.audience === 'string' ? body.audience : undefined;
-  const intensity = typeof body.intensity === 'string' ? body.intensity : undefined;
-  const language = typeof body.language === 'string' ? body.language : undefined;
+  const audience =
+    typeof body.audience === 'string' ? body.audience : undefined;
+  const intensity =
+    typeof body.intensity === 'string' ? body.intensity : undefined;
+  const language =
+    typeof body.language === 'string' ? body.language : undefined;
   const scriptStr = typeof body.script === 'string' ? body.script : undefined;
 
   // Log exactly what the frontend is sending
-  console.info('[HookLab] Received:', { 
-    platform, 
-    tone, 
-    audience, 
-    intensity, 
+  console.info('[HookLab] Received:', {
+    platform,
+    tone,
+    audience,
+    intensity,
     language,
-    scriptLength: scriptStr?.length 
+    scriptLength: scriptStr?.length,
   });
-  
+
   if (platform && !VALID_PLATFORMS.includes(platform)) {
     console.error(`[HookLab] Invalid platform received: "${platform}"`);
-    response.status(400).json({ 
-      error: `Invalid platform: "${platform}". Expected one of: ${VALID_PLATFORMS.join(", ")}` 
+    response.status(400).json({
+      error: `Invalid platform: "${platform}". Expected one of: ${VALID_PLATFORMS.join(', ')}`,
     });
     return;
   }
 
-  const result = await createGenerateHooksResponse({
+  const options = {
     apiKeys: getApiKeys(),
-    body: request.body,
+    body: request.body as unknown,
     ip: getRequestIp(request),
     model: getGeminiModel(),
-  });
+  };
+
+  if (wantsHookStream(request.headers.accept)) {
+    await streamGenerateHooks(response, options);
+    return;
+  }
+
+  const result = await createGenerateHooksResponse(options);
 
   response.status(result.status).json(result.payload);
 }
