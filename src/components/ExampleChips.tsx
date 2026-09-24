@@ -1,9 +1,13 @@
+import type { ReactNode } from 'react';
+
 import type { Mode } from '../types/hooks';
 
 interface ExampleChipsProps {
   mode: Mode;
   onLoadScript: (script: string) => void;
   onLoadCompare: (hookA: string, hookB: string) => void;
+  /** Extra controls shown at the end of the row, such as the templates button. */
+  children?: ReactNode;
 }
 
 const generateExamples = [
@@ -47,6 +51,7 @@ export function ExampleChips({
   mode,
   onLoadScript,
   onLoadCompare,
+  children,
 }: ExampleChipsProps) {
   const chips =
     mode === 'compare'
@@ -56,7 +61,8 @@ export function ExampleChips({
         : generateExamples;
 
   return (
-    <div className="mb-3 flex flex-wrap gap-2">
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="text-xs text-muted">Try:</span>
       {chips.map((chip) => (
         <button
           key={chip.label}
@@ -68,11 +74,12 @@ export function ExampleChips({
               onLoadScript(chip.script);
             }
           }}
-          className="min-h-11 rounded-full border border-white/10 px-3 py-2 font-mono text-[11px] text-muted transition-colors hover:border-amber/50 hover:text-amber focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"
+          className="min-h-11 rounded-full border border-white/10 px-3 text-xs text-secondary transition hover:border-amber/50 hover:text-amber active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"
         >
           {chip.label}
         </button>
       ))}
+      {children}
     </div>
   );
 }
