@@ -1,4 +1,12 @@
-import { Bookmark, Clock3, Flame, Moon, Scissors, Sun } from 'lucide-react';
+import {
+  Bookmark,
+  Clock3,
+  Flame,
+  Moon,
+  Scissors,
+  Sun,
+  Wand2,
+} from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { BackToTop } from './components/BackToTop';
@@ -17,7 +25,6 @@ import { ScriptInput } from './components/ScriptInput';
 import { ScriptOutline } from './components/ScriptOutline';
 import { SkeletonCard } from './components/SkeletonCard';
 import { TemplateSheet } from './components/TemplateSheet';
-import { TemplateTrigger } from './components/TemplateTrigger';
 import { WordSwap } from './components/WordSwap';
 import { type ScriptTemplate } from './data/templates';
 import { useHistory } from './hooks/useHistory';
@@ -465,15 +472,45 @@ function App() {
     });
   };
 
+  const hasResults = compareResult !== null || sortedHooks.length > 0;
+  const modeHints: Record<Mode, string> = {
+    generate: 'Paste your script or video idea. You get 10 hook options.',
+    roast:
+      'Paste a hook you already have. You get a grade, fixes and 10 rewrites.',
+    compare: 'Paste two hooks. See which one wins and why.',
+  };
+  const headerButton =
+    'grid h-11 w-11 place-items-center rounded-md border border-white/10 text-muted transition hover:border-cyan/50 hover:text-cyan active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan';
+
   return (
     <main className="min-h-screen bg-bg text-primary">
-      <div className="mx-auto flex min-h-screen w-full max-w-[1720px] flex-col px-4 pb-[88px] pt-5 sm:px-6 md:py-5 lg:px-8">
-        <header className="grid gap-6 border-b border-border pb-6 lg:grid-cols-[1fr_auto_auto] lg:items-end">
-          <div>
-            <div className="mb-3 flex items-center gap-3">
-              <p className="font-mono text-xs uppercase tracking-[0.22em] text-amber">
-                00:00 HookLab.AI
-              </p>
+      <div className="mx-auto flex min-h-screen w-full max-w-[1440px] flex-col px-4 pb-[88px] pt-4 sm:px-6 md:pb-8 md:pt-5 lg:px-8">
+        <header className="border-b border-border pb-5 md:pb-6">
+          <div className="flex items-center justify-between gap-3">
+            <p className="font-mono text-xs uppercase tracking-[0.22em] text-amber">
+              HookLab.AI
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setIsLibraryOpen(true)}
+                aria-label={`Open saved hooks (${library.savedHooks.length})`}
+                title="Saved hooks"
+                className="inline-flex min-h-11 items-center gap-2 rounded-md border border-white/10 px-3 text-sm text-muted transition hover:border-cyan/50 hover:text-cyan active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan"
+              >
+                <Bookmark size={17} aria-hidden="true" />
+                <span className="hidden sm:inline">Saved</span>
+                <span className="text-cyan">{library.savedHooks.length}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsHistoryOpen(true)}
+                aria-label="Open history"
+                title="History"
+                className={headerButton}
+              >
+                <Clock3 size={18} aria-hidden="true" />
+              </button>
               <button
                 type="button"
                 onClick={toggleThemePreference}
@@ -483,7 +520,8 @@ function App() {
                     : 'Use night theme'
                 }
                 aria-pressed={themePreference === 'night'}
-                className="grid h-11 w-11 place-items-center rounded-[4px] border border-white/10 text-muted transition-colors hover:border-amber/50 hover:text-amber focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"
+                title="Theme"
+                className={headerButton}
               >
                 {themePreference === 'night' ? (
                   <Sun size={18} aria-hidden="true" />
@@ -492,46 +530,25 @@ function App() {
                 )}
               </button>
             </div>
-            <h1 className="max-w-4xl font-display text-[clamp(2.75rem,8vw,6.75rem)] font-semibold leading-[0.9] tracking-normal">
-              Cut the first few{' '}
-              <WordSwap
-                words={['seconds', 'hooks', 'frames', 'beats']}
-                className="text-amber"
-              />{' '}
-              before the edit.
-            </h1>
           </div>
-          <div className="max-w-sm border-l-2 border-cyan/50 pl-4 font-mono text-sm leading-6 text-muted">
-            Ten frameworks. One opening beat. Built for creators tuning
-            retention before the timeline gets crowded.
-          </div>
-          <div className="flex items-center gap-3 lg:self-start">
-            <button
-              type="button"
-              onClick={() => setIsLibraryOpen(true)}
-              aria-label={`Open saved hooks (${library.savedHooks.length})`}
-              title="Saved hooks"
-              className="inline-flex min-h-11 items-center gap-2 rounded border border-white/10 px-3 text-sm text-muted hover:text-cyan focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan"
-            >
-              <Bookmark size={18} />
-              Saved{' '}
-              <span className="text-cyan">{library.savedHooks.length}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsHistoryOpen(true)}
-              aria-label="Open history"
-              className="grid h-11 w-11 place-items-center rounded-[4px] border border-white/10 text-muted transition-colors hover:border-cyan/50 hover:text-cyan focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan"
-            >
-              <Clock3 size={19} />
-            </button>
-          </div>
+          <h1 className="mt-5 max-w-3xl font-display text-[clamp(2rem,5vw,3.25rem)] font-semibold leading-[1] tracking-normal md:mt-6">
+            Cut the first few{' '}
+            <WordSwap
+              words={['seconds', 'hooks', 'frames', 'beats']}
+              className="text-amber"
+            />{' '}
+            before the edit.
+          </h1>
+          <p className="mt-3 max-w-xl text-sm leading-6 text-secondary md:text-base">
+            Turn your video idea into scroll-stopping opening lines for Shorts,
+            Reels and TikTok.
+          </p>
         </header>
 
-        <section className="grid flex-1 gap-6 py-6 xl:grid-cols-[minmax(380px,0.82fr)_minmax(0,1.18fr)]">
-          <div className="space-y-5 xl:sticky xl:top-6 xl:self-start">
+        <section className="grid flex-1 gap-8 py-6 xl:grid-cols-[minmax(380px,0.8fr)_minmax(0,1.2fr)] xl:gap-10">
+          <div className="xl:sticky xl:top-6 xl:self-start">
             <form
-              className="space-y-4 md:space-y-5"
+              className="space-y-5"
               onSubmit={(event) => {
                 event.preventDefault();
                 void cutHooks();
@@ -554,31 +571,22 @@ function App() {
                   onChange={handleModeChange}
                 />
               </div>
-              <div>
-                {mode === 'generate' ? (
-                  <p className="mb-2 text-sm text-muted">
-                    Rewrite your opening line into stronger short-form hooks.
-                  </p>
-                ) : null}
-                <ExampleChips
-                  mode={mode}
-                  onLoadScript={(s) => {
-                    setScript(s);
-                  }}
-                  onLoadCompare={(a, b) => {
-                    setScript(a);
-                    setHookB(b);
-                  }}
-                />
-                {mode === 'generate' ? (
-                  <button
-                    type="button"
-                    onClick={() => handleModeChange('roast')}
-                    className="mb-3 inline-flex min-h-11 items-center rounded-[4px] text-left font-mono text-xs text-muted transition-colors hover:text-amber focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"
-                  >
-                    Already have a hook? Try Roast instead -&gt;
-                  </button>
-                ) : null}
+              <div className="space-y-3">
+                <p className="text-sm leading-6 text-secondary">
+                  {modeHints[mode]}
+                  {mode === 'generate' ? (
+                    <>
+                      {' '}
+                      <button
+                        type="button"
+                        onClick={() => handleModeChange('roast')}
+                        className="text-amber underline-offset-4 transition-colors hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"
+                      >
+                        Already have a hook? Roast it.
+                      </button>
+                    </>
+                  ) : null}
+                </p>
                 <ScriptInput
                   value={script}
                   onChange={setScript}
@@ -589,42 +597,28 @@ function App() {
                   disabled={isLoading}
                 />
                 {inputError ? (
-                  <p className="mt-2 font-mono text-xs text-amber">
-                    {inputError}
-                  </p>
+                  <p className="text-sm text-amber">{inputError}</p>
                 ) : null}
+                <ExampleChips
+                  mode={mode}
+                  onLoadScript={(s) => {
+                    setScript(s);
+                  }}
+                  onLoadCompare={(a, b) => {
+                    setScript(a);
+                    setHookB(b);
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setIsTemplateSheetOpen(true)}
+                    className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-amber/40 px-3 text-xs text-amber transition hover:border-amber hover:bg-amber/10 active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber"
+                  >
+                    <Wand2 size={14} aria-hidden="true" />
+                    Browse templates
+                  </button>
+                </ExampleChips>
               </div>
-              <button
-                type="submit"
-                disabled={!canSubmit}
-                className={`inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-md px-5 py-3 font-display text-base font-semibold text-bg transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-muted sm:w-auto ${
-                  mode === 'roast'
-                    ? 'bg-red hover:brightness-110'
-                    : mode === 'compare'
-                      ? 'bg-cyan hover:brightness-110'
-                      : 'bg-amber hover:brightness-110'
-                }`}
-              >
-                {mode === 'roast' ? (
-                  <>
-                    <Flame size={18} aria-hidden="true" />
-                    Roast My Hook
-                  </>
-                ) : mode === 'compare' ? (
-                  <>
-                    <Scissors size={18} aria-hidden="true" />
-                    Compare Hooks
-                  </>
-                ) : (
-                  <>
-                    <Scissors size={18} aria-hidden="true" />
-                    Cut 10 Hooks
-                  </>
-                )}
-              </button>
-              <p className="hidden font-mono text-[11px] text-muted md:block">
-                Ctrl/⌘ + Enter to run · drafts save in this browser
-              </p>
               <PlatformSelector
                 selectedPlatform={platform}
                 onChange={setPlatform}
@@ -643,29 +637,73 @@ function App() {
                 onLanguageChange={setLanguage}
                 onHookWindowChange={setHookWindow}
               />
+              <div className="space-y-2">
+                <button
+                  type="submit"
+                  disabled={!canSubmit}
+                  className={`inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-lg px-5 py-3 font-display text-base font-semibold text-bg transition hover:brightness-110 active:scale-[0.99] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-muted disabled:active:scale-100 ${
+                    mode === 'roast'
+                      ? 'bg-red'
+                      : mode === 'compare'
+                        ? 'bg-cyan'
+                        : 'bg-amber'
+                  }`}
+                >
+                  {mode === 'roast' ? (
+                    <>
+                      <Flame size={18} aria-hidden="true" />
+                      Roast My Hook
+                    </>
+                  ) : mode === 'compare' ? (
+                    <>
+                      <Scissors size={18} aria-hidden="true" />
+                      Compare Hooks
+                    </>
+                  ) : (
+                    <>
+                      <Scissors size={18} aria-hidden="true" />
+                      Cut 10 Hooks
+                    </>
+                  )}
+                </button>
+                <p className="text-center text-xs text-muted">
+                  <span className="hidden md:inline">
+                    Ctrl/⌘ + Enter to run ·{' '}
+                  </span>
+                  Your draft is saved in this browser
+                </p>
+              </div>
             </form>
-
-            <ComparisonSection />
           </div>
 
           <section aria-live="polite" aria-busy={isLoading}>
-            <div className="mb-4 flex items-center justify-between gap-4">
-              <h2 className="font-mono text-xs uppercase tracking-[0.18em] text-muted">
-                Timeline Cuts
-              </h2>
-              <span className="font-mono text-xs text-muted">
-                {isLoading
-                  ? mode === 'roast'
-                    ? 'Roasting'
-                    : mode === 'compare'
-                      ? 'Comparing'
-                      : 'Cutting'
-                  : compareResult
-                    ? 'Comparison complete'
-                    : hooks.length > 0
-                      ? `${hooks.length}/10`
-                      : 'Standby'}
-              </span>
+            <div className="mb-4 flex min-h-11 items-center justify-between gap-4">
+              <div>
+                <h2 className="font-display text-lg font-semibold text-primary">
+                  {compareResult ? 'Comparison' : 'Your hooks'}
+                </h2>
+                <p className="text-xs text-muted">
+                  {isLoading
+                    ? mode === 'roast'
+                      ? 'Roasting your hook…'
+                      : mode === 'compare'
+                        ? 'Comparing your hooks…'
+                        : 'Writing 10 hooks…'
+                    : compareResult
+                      ? 'Winner picked'
+                      : hooks.length > 0
+                        ? `${hooks.length} options · best pick first · scores are AI estimates, not view predictions`
+                        : 'Results appear here'}
+                </p>
+              </div>
+              {!isLoading && hasResults && currentRequest ? (
+                <ExportBar
+                  hooks={compareResult ? [] : sortedHooks}
+                  request={currentRequest}
+                  roast={compareResult ? undefined : (roast ?? undefined)}
+                  compare={compareResult ?? undefined}
+                />
+              ) : null}
             </div>
 
             {surfaceError ? (
@@ -726,13 +764,6 @@ function App() {
                     );
                   }}
                 />
-                {currentRequest ? (
-                  <ExportBar
-                    hooks={[]}
-                    request={currentRequest}
-                    compare={compareResult}
-                  />
-                ) : null}
               </div>
             ) : sortedHooks.length > 0 ? (
               <div
@@ -777,13 +808,6 @@ function App() {
                     />
                   ))}
                 </div>
-                {currentRequest ? (
-                  <ExportBar
-                    hooks={sortedHooks}
-                    request={currentRequest}
-                    roast={roast ?? undefined}
-                  />
-                ) : null}
               </div>
             ) : sharedHook ? (
               <SharedHookCard
@@ -798,17 +822,23 @@ function App() {
                 onDismiss={() => setSharedHook(null)}
               />
             ) : (
-              <div className="flex flex-col items-center justify-center h-64 text-center">
-                <div className="w-16 h-16 bg-gradient-to-tr from-red/10 to-amber/10 rounded-2xl flex items-center justify-center mb-4">
-                  <Scissors className="w-8 h-8 text-red" />
+              <div className="space-y-8">
+                <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-white/10 px-6 py-10 text-center">
+                  <div className="mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-gradient-to-tr from-red/10 to-amber/10">
+                    <Scissors
+                      className="h-7 w-7 text-amber"
+                      aria-hidden="true"
+                    />
+                  </div>
+                  <h3 className="mb-2 text-lg font-semibold text-primary">
+                    Ready when you are
+                  </h3>
+                  <p className="max-w-sm text-sm leading-6 text-muted">
+                    Paste your script, try an example, or browse templates. Your
+                    hooks will show up here.
+                  </p>
                 </div>
-                <h3 className="text-xl font-bold text-primary mb-2">
-                  Ready to cut
-                </h3>
-                <p className="text-muted max-w-md">
-                  Paste your script on the left or select a template from the
-                  bottom left to start generating high-retention hooks.
-                </p>
+                <ComparisonSection />
               </div>
             )}
           </section>
@@ -820,8 +850,6 @@ function App() {
         disabled={isLoading}
         onChange={handleModeChange}
       />
-
-      <TemplateTrigger onClick={() => setIsTemplateSheetOpen(true)} />
 
       <TemplateSheet
         isOpen={isTemplateSheetOpen}
