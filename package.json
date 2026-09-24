@@ -10,6 +10,7 @@
     "preview": "vite preview --host 0.0.0.0",
     "test:relevance": "node --experimental-strip-types scripts/relevance.test.mjs",
     "test:features": "node scripts/features.test.mjs",
+    "test:functions": "node scripts/functions.test.mjs",
     "test:share": "node --experimental-strip-types --no-warnings scripts/share.test.mjs",
     "check": "node scripts/health-check.mjs",
     "format": "prettier --write ."
