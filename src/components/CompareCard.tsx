@@ -1,7 +1,7 @@
 import { ChevronDown, Trophy } from 'lucide-react';
 import { useState } from 'react';
 
-import type { CompareHooksResponse } from '../types/hooks';
+import type { CompareHooksResponse, Platform } from '../types/hooks';
 import { HookActions } from './HookActions';
 
 interface CompareCardProps {
@@ -11,7 +11,7 @@ interface CompareCardProps {
   isExpandingWinner?: boolean;
   expandError?: string;
   onExpandWinner?: () => void;
-  platform: string;
+  platform: Platform;
   winnerSaved: boolean;
   improvedSaved: boolean;
   onSaveWinner: () => void;
