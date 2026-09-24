@@ -18,7 +18,7 @@ export function ModeToggle({
   onChange,
 }: ModeToggleProps) {
   return (
-    <div className="flex rounded-md border border-white/10 bg-black/20 p-1">
+    <div className="flex gap-1 rounded-lg border border-white/10 bg-black/20 p-1">
       {modes.map((value) => {
         const isSelected = value === mode;
 
@@ -38,7 +38,7 @@ export function ModeToggle({
             disabled={disabled}
             aria-pressed={isSelected}
             onClick={() => onChange(value)}
-            className={`relative min-h-11 flex-1 rounded-[4px] px-3 py-2 font-mono text-[11px] font-semibold uppercase tracking-[0.1em] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber disabled:cursor-not-allowed disabled:opacity-60 ${
+            className={`relative min-h-11 flex-1 rounded-md px-3 py-2 text-sm font-semibold transition active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber disabled:cursor-not-allowed disabled:opacity-60 ${
               isSelected
                 ? selectedClasses
                 : 'text-muted hover:bg-white/5 hover:text-cyan'
