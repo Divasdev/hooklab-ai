@@ -5,14 +5,25 @@ import type {
   CompareHooksResponse,
 } from '../types/hooks';
 
-const csvEscape = (value: string | number): string =>
-  `"${String(value).replace(/"/g, '""')}"`;
+// Model text can start with =, +, - or @; prefix it so spreadsheets don't run it.
+const csvEscape = (value: string | number): string => {
+  const text = String(value);
+  const safe =
+    typeof value === 'string' && /^[=+@\-\t\r]/.test(text) ? `'${text}` : text;
+  return `"${safe.replace(/"/g, '""')}"`;
+};
+
+const firstFrameLines = (hook: HookResult | undefined): string =>
+  [
+    hook?.on_screen_text ? `\nOn-screen text: ${hook.on_screen_text}` : '',
+    hook?.visual ? `\nVisual: ${hook.visual}` : '',
+  ].join('');
 
 export const buildHooksPlainText = (hooks: HookResult[]): string =>
   hooks
     .map(
       (hook) =>
-        `[${hook.framework}]\nHook: ${hook.text}\nWhy it works: ${hook.why}`,
+        `[${hook.framework}]\nHook: ${hook.text}\nWhy it works: ${hook.why}${firstFrameLines(hook)}`,
     )
     .join('\n\n');
 
@@ -21,6 +32,8 @@ export const buildHooksCsv = (hooks: HookResult[]): string => {
     'Framework',
     'Hook',
     'Why It Works',
+    'On-Screen Text',
+    'Visual',
     'Curiosity',
     'Clarity',
     'Scroll Stop',
@@ -30,6 +43,8 @@ export const buildHooksCsv = (hooks: HookResult[]): string => {
     hook.framework,
     hook.text,
     hook.why,
+    hook.on_screen_text ?? '',
+    hook.visual ?? '',
     hook.scores.curiosity,
     hook.scores.clarity,
     hook.scores.scroll_stop,
@@ -100,7 +115,7 @@ ${roastBlock}${compareBlock}${
 ⭐ BEST PICK
 [${hooks.find((h) => h.best_pick)?.framework ?? hooks[0]?.framework ?? 'BEST PICK'}]
 ${hooks.find((h) => h.best_pick)?.text ?? hooks[0]?.text ?? ''}
-Why: ${hooks.find((h) => h.best_pick)?.why ?? hooks[0]?.why ?? ''}
+Why: ${hooks.find((h) => h.best_pick)?.why ?? hooks[0]?.why ?? ''}${firstFrameLines(hooks.find((h) => h.best_pick) ?? hooks[0])}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━
 ALL HOOKS
