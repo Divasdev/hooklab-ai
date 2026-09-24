@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import type { Platform } from '../types/hooks';
+import { trackEvent } from '../utils/analytics';
 import { copyToClipboard } from '../utils/clipboard';
 import { downloadHookImage } from '../utils/shareCard';
 import { buildShareUrl } from '../utils/shareLink';
@@ -36,6 +37,7 @@ export function useHookActions({
     const ok = await copyToClipboard(text);
     setCopied(ok);
     setError(ok ? '' : 'Copy failed. Please try again.');
+    if (ok) trackEvent('hook_copied', { framework, platform });
   };
 
   const share = async (): Promise<void> => {
@@ -47,6 +49,7 @@ export function useHookActions({
     if (navigator.share && window.matchMedia('(pointer: coarse)').matches) {
       try {
         await navigator.share({ title: 'A hook from HookLab.AI', url });
+        trackEvent('hook_shared', { method: 'native', platform });
         return;
       } catch (shareError) {
         if (
@@ -60,12 +63,14 @@ export function useHookActions({
     const ok = await copyToClipboard(url);
     setLinkCopied(ok);
     setError(ok ? '' : 'Could not copy the share link.');
+    if (ok) trackEvent('hook_shared', { method: 'link', platform });
   };
 
   const downloadImage = (): void => {
     setExporting(true);
     setError('');
     void downloadHookImage(text, framework, platform)
+      .then(() => trackEvent('hook_image_saved', { framework, platform }))
       .catch(() => setError('Image export failed. Please try again.'))
       .finally(() => setExporting(false));
   };
