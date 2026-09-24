@@ -22,7 +22,9 @@ All listed controls are required unless a default is explicitly stated.
 Accepts `script`, all shared controls, and `mode` (`generate`, `roast`, or
 `compare`; defaults to `generate`). Compare additionally requires `hookB`.
 Scripts are 20-3000 characters after trimming, or 5-3000 in Roast.
-Compare's second hook is also 20-3000 characters.
+Compare's second hook is also 20-3000 characters. An optional `niche`
+(free text, trimmed to 60 characters on one line) tailors wording to a
+specific audience such as "home cooking"; the script's topic still wins.
 
 ```json
 {
@@ -39,7 +41,21 @@ Compare's second hook is also 20-3000 characters.
 
 Generate returns `{ mode: "generate", hooks: HookResult[] }` with ten hooks.
 Each hook has `framework`, `text`, `why`, `timecode`, `scores` (curiosity,
-clarity, scroll_stop, platform_fit), and `best_pick`. Scores are AI estimates.
+clarity, scroll_stop, platform_fit), `best_pick`, and, when the model provides
+them, `on_screen_text` and `visual` for the first frame. Scores are AI
+estimates. Exactly one hook is the best pick: if the model marks none or
+several, the server picks the highest average score instead of retrying.
+
+### Streaming (Generate and Roast)
+
+Send `Accept: application/x-ndjson` to receive one JSON object per line while
+the model writes: `{ "type": "hook", "hook": HookResult }` for each finished
+hook, `{ "type": "reset" }` if a rejected attempt is being regenerated, and
+finally `{ "type": "result", "status": number, "payload": ... }` carrying the
+same status and body as the non-streaming response. The HTTP status is 200
+once streaming starts, so clients must read `status` from the final line.
+Streamed hooks are previews; only the final payload has passed validation
+and topic grounding. Compare always returns a single JSON response.
 
 Roast returns `{ mode: "roast", hooks, roast: { grade, bullets, biggest_fix } }`.
 Compare returns `{ mode: "compare", compare: { winner, confidence, summary,
@@ -53,7 +69,8 @@ Rate limit: 10 requests per IP per hour, shared by these modes.
 Accepts `hook` (1-600 characters), `framework` (one of the ten generated
 frameworks), `direction`, `platform`, and `hookWindow`.
 Directions: Shorter, More Emotional, More Controversial, Clearer, Less Clickbait.
-Returns `{ text, why, scores }`. Rate limit: 20 requests per IP per hour.
+Returns `{ text, why, scores }`, plus `on_screen_text` and `visual` when
+provided. Rate limit: 20 requests per IP per hour.
 
 ## POST /api/expand-hook
 
@@ -66,6 +83,14 @@ finished script. Outlines are not persisted.
 
 Rate limit: 20 requests per IP per hour, separate from rewriting.
 
+## GET /s and GET /api/og
+
+`/s?h=<hook>&f=<framework>&p=<platform>` (rewritten to `/api/share`) returns
+a small HTML page with Open Graph and Twitter card tags, then redirects to
+the app at `/?h=…`, which shows the shared hook. `/api/og` with the same
+query renders the 1200×630 PNG preview used by those tags. Hook text is
+capped at 400 characters and escaped; nothing is stored server-side.
+
 ## Errors and operations
 
 - 400: invalid input or upstream bad request.
@@ -73,6 +98,9 @@ Rate limit: 20 requests per IP per hour, separate from rewriting.
 - 500: no server API key configured.
 - 502: invalid model output, grounding failure, or upstream failure.
 
+Gemini calls use a response schema (so replies keep the expected shape), a
+25-second overall timeout, and for streams an 8-second idle timeout; a
+timeout returns 504 or is retried within the request's attempt budget.
 Keys rotate on upstream 429 responses. The existing all-keys-exhausted
 fallback is preserved. Limits use process-local memory: they reset on cold
 starts and are not a global abuse-control guarantee across server instances.
