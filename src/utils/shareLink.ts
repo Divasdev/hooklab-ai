@@ -1,4 +1,4 @@
-import { platforms, type Platform } from '../types/hooks';
+import { platforms, type Platform } from '../types/hooks.js';
 
 export interface SharedHook {
   text: string;
