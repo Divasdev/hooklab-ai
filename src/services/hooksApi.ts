@@ -41,6 +41,9 @@ const isHookScores = (value: unknown): value is HookScores => {
   );
 };
 
+const isOptionalString = (value: unknown): boolean =>
+  value === undefined || typeof value === 'string';
+
 const isHookResult = (value: unknown): value is HookResult => {
   if (!isRecord(value)) {
     return false;
@@ -52,7 +55,9 @@ const isHookResult = (value: unknown): value is HookResult => {
     typeof value.why === 'string' &&
     (value.timecode === '00:00–00:05' || value.timecode === '00:00–00:08') &&
     isHookScores(value.scores) &&
-    typeof value.best_pick === 'boolean'
+    typeof value.best_pick === 'boolean' &&
+    isOptionalString(value.on_screen_text) &&
+    isOptionalString(value.visual)
   );
 };
 
