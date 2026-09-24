@@ -23,7 +23,7 @@ const roastPlaceholders: Record<HookLanguage, string> = {
 };
 
 const labels: Record<Mode, string> = {
-  generate: 'Script Slate',
+  generate: 'Your script',
   roast: 'Your Hook',
   compare: 'Hook A',
 };
@@ -45,7 +45,7 @@ export function ScriptInput({
     return (
       <div className="grid gap-3 sm:grid-cols-2 md:gap-4">
         <label className="block">
-          <span className="mb-2 block font-mono text-xs uppercase tracking-[0.18em] text-muted md:mb-3">
+          <span className="mb-2 block text-xs font-medium text-muted">
             {labels.compare}
           </span>
           <textarea
@@ -59,7 +59,7 @@ export function ScriptInput({
           />
         </label>
         <label className="block">
-          <span className="mb-2 block font-mono text-xs uppercase tracking-[0.18em] text-muted md:mb-3">
+          <span className="mb-2 block text-xs font-medium text-muted">
             Hook B
           </span>
           <textarea
@@ -78,7 +78,7 @@ export function ScriptInput({
 
   return (
     <label className="block">
-      <span className="mb-2 block font-mono text-xs uppercase tracking-[0.18em] text-muted md:mb-3">
+      <span className="mb-2 block text-xs font-medium text-muted">
         {labels[mode]}
       </span>
       <textarea
@@ -87,11 +87,11 @@ export function ScriptInput({
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         minLength={minLength}
-        rows={mode === 'roast' ? 4 : 10}
+        rows={mode === 'roast' ? 4 : 5}
         className={`w-full resize-y rounded-md border border-white/10 border-t-2 bg-surface px-4 py-4 font-mono text-sm leading-6 text-primary shadow-panel outline-none transition-colors placeholder:text-muted/70 focus:border-cyan focus:ring-2 focus:ring-cyan/30 disabled:cursor-not-allowed disabled:opacity-70 md:px-5 md:py-5 md:leading-7 ${
           mode === 'roast'
             ? 'min-h-[112px] border-t-red focus:border-t-red md:min-h-[120px]'
-            : 'min-h-[188px] border-t-amber focus:border-t-amber md:min-h-[250px]'
+            : 'min-h-[160px] border-t-amber focus:border-t-amber md:min-h-[160px]'
         }`}
       />
       {value.trim().length > 0 && (
