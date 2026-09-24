@@ -7,6 +7,7 @@ import {
   ImageDown,
   Link2,
   LoaderCircle,
+  Mic,
   MoreHorizontal,
   RotateCcw,
   Timer,
@@ -39,6 +40,7 @@ interface HookCardProps {
   onRewrite: (direction: RewriteDirection) => void;
   onUndo: () => void;
   onExpand: () => void;
+  onPractice: () => void;
   saved: boolean;
   onSave: () => void;
 }
@@ -62,6 +64,7 @@ export function HookCard({
   onRewrite,
   onUndo,
   onExpand,
+  onPractice,
   saved,
   onSave,
 }: HookCardProps) {
@@ -269,6 +272,10 @@ export function HookCard({
 
         <Reveal open={panel === 'more'} id={`${panelId}-more`}>
           <div className="flex flex-wrap gap-2 pt-3">
+            <button type="button" className={menuButton} onClick={onPractice}>
+              <Mic size={15} aria-hidden="true" />
+              Practice saying it
+            </button>
             <button
               type="button"
               className={menuButton}
