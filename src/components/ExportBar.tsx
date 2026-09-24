@@ -6,6 +6,7 @@ import type {
   RoastCritique,
   CompareHooksResponse,
 } from '../types/hooks';
+import { copyToClipboard } from '../utils/clipboard';
 import {
   buildHooksCsv,
   buildHooksPlainText,
@@ -34,12 +35,11 @@ export function ExportBar({ hooks, request, roast, compare }: ExportBarProps) {
   }, [copied]);
 
   const copyAll = async (): Promise<void> => {
-    if (compare) {
-      await navigator.clipboard.writeText(compare.improvedHook);
-    } else {
-      await navigator.clipboard.writeText(buildHooksPlainText(hooks));
-    }
-    setCopied(true);
+    setCopied(
+      await copyToClipboard(
+        compare ? compare.improvedHook : buildHooksPlainText(hooks),
+      ),
+    );
   };
 
   const downloadCsv = (): void => {
