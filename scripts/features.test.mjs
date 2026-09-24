@@ -132,7 +132,7 @@ try {
   globalThis.fetch = async () => new Response('{}', { status: 429 });
   const exhausted = await invoke();
   assert.equal(exhausted.status, 429);
-  assert.match(exhausted.payload.error, /Hamza/);
+  assert.match(exhausted.payload.error, /usage limit/);
   calls = 0;
   globalThis.fetch = async () => {
     calls++;
@@ -299,6 +299,82 @@ try {
   Object.assign(console, originalConsole);
 }
 
+const { extractStreamedHooks } = await load('src/server/hookGeneration.ts');
+const streamedJson = JSON.stringify({ hooks: modelHooks(true) });
+const cutAt = streamedJson.indexOf('"framework":"PATTERN INTERRUPT"');
+assert.equal(
+  extractStreamedHooks(streamedJson.slice(0, cutAt), '00:00–00:08').length,
+  2,
+  'Only complete hook objects are extracted from a partial stream',
+);
+assert.equal(extractStreamedHooks(streamedJson, '00:00–00:05').length, 10);
+assert.equal(
+  extractStreamedHooks('{"hooks":[{"text":"a \\"}\\" b"', '00:00–00:05').length,
+  0,
+  'Braces inside strings do not end an object',
+);
+
+const sseResponse = (text, pieces = 7) => {
+  const size = Math.ceil(text.length / pieces);
+  const events = Array.from(
+    { length: pieces },
+    (_, i) =>
+      `data: ${JSON.stringify({ candidates: [{ content: { parts: [{ text: text.slice(i * size, (i + 1) * size) }] } }] })}\r\n\r\n`,
+  );
+  return new Response(
+    new ReadableStream({
+      start(controller) {
+        for (const event of events)
+          controller.enqueue(new TextEncoder().encode(event));
+        controller.close();
+      },
+    }),
+    { status: 200, headers: { 'Content-Type': 'text/event-stream' } },
+  );
+};
+try {
+  console.warn = console.error = console.info = () => {};
+  const noBestPick = modelHooks(true).map((hook, index) => ({
+    ...hook,
+    best_pick: false,
+    scores: { ...hook.scores, clarity: index === 6 ? 99 : 70 },
+  }));
+  let requestUrl = '';
+  let requestBody = null;
+  globalThis.fetch = async (url, init) => {
+    requestUrl = String(url);
+    requestBody = JSON.parse(init.body);
+    return sseResponse(JSON.stringify({ hooks: noBestPick }));
+  };
+  const events = [];
+  const streamed = await createGenerateHooksResponse({
+    body: generateBody,
+    apiKeys: ['stream-key'],
+    ip: crypto.randomUUID(),
+    onEvent: (event) => events.push(event),
+  });
+  assert.equal(streamed.status, 200);
+  assert.match(requestUrl, /streamGenerateContent\?alt=sse/);
+  assert.equal(
+    requestBody.generationConfig.responseSchema.properties.hooks.minItems,
+    10,
+    'Structured output schema is sent to Gemini',
+  );
+  assert.equal(events.filter((event) => event.type === 'hook').length, 10);
+  assert.equal(
+    streamed.payload.hooks.filter((hook) => hook.best_pick).length,
+    1,
+    'A missing best pick is repaired without a retry',
+  );
+  assert.equal(
+    streamed.payload.hooks.find((hook) => hook.best_pick).framework,
+    'DIRECT CALLOUT',
+  );
+} finally {
+  globalThis.fetch = originalFetch;
+  Object.assign(console, originalConsole);
+}
+
 console.log(
-  'Saved library, CSV, expansion validation, key rotation, rate limiting, privacy, speak time, share link, draft and first-frame tests passed.',
+  'Saved library, CSV, expansion validation, key rotation, rate limiting, privacy, speak time, share link, draft, first-frame and streaming tests passed.',
 );
