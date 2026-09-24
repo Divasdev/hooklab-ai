@@ -7,6 +7,7 @@ import type {
   RoastCritique,
   CompareHooksResponse,
 } from '../types/hooks';
+import { trackEvent } from '../utils/analytics';
 import { copyToClipboard } from '../utils/clipboard';
 import {
   buildHooksCsv,
@@ -63,6 +64,7 @@ export function ExportBar({ hooks, request, roast, compare }: ExportBarProps) {
   }, [isOpen]);
 
   const copyAll = async (): Promise<void> => {
+    trackEvent('results_exported', { format: 'copy' });
     setCopied(
       await copyToClipboard(
         compare ? compare.improvedHook : buildHooksPlainText(hooks),
@@ -71,11 +73,13 @@ export function ExportBar({ hooks, request, roast, compare }: ExportBarProps) {
   };
 
   const downloadCsv = (): void => {
+    trackEvent('results_exported', { format: 'csv' });
     downloadTextFile('hooklab-ai-hooks.csv', buildHooksCsv(hooks), 'text/csv');
     setIsOpen(false);
   };
 
   const downloadNotes = (): void => {
+    trackEvent('results_exported', { format: 'notes' });
     downloadTextFile(
       'hooklab-ai-script-notes.txt',
       buildScriptNotes(request, hooks, roast, compare),
