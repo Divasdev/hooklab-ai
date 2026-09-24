@@ -54,6 +54,21 @@ If you prefer to decouple the frontend and backend, you must split the applicati
 2. Ensure you set the `GEMINI_API_KEY` securely in the dashboard of your chosen backend provider.
 3. Configure CORS to allow requests from your Netlify frontend URL.
 
+## What creators get
+
+- Ten hooks per idea, streamed in as they are written, each with a caption
+  overlay and first-frame shot idea, an estimated speaking time and scores.
+- Roast an existing hook, or compare two and get an improved version.
+- An optional niche ("home cooking", "UPSC prep") to tailor the wording.
+- **Practice saying it**: a teleprompter with a countdown that times you
+  reading the hook aloud against your 5 or 8 second window.
+- Share links that unfurl as an image of the hook on WhatsApp, X and Discord.
+- Installable on phones (web app manifest) and drafts that survive a refresh.
+
+Product events sent to Vercel Analytics carry only categories such as mode,
+platform or framework, never scripts or hook text (see
+`src/utils/analytics.ts`). Custom events need a Vercel plan that includes them.
+
 ## Saved Hooks and Sharing
 
 Save individual results from Generate, Roast, or Compare using the bookmark
