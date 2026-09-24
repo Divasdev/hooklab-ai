@@ -150,6 +150,155 @@ try {
   globalThis.fetch = originalFetch;
   Object.assign(console, originalConsole);
 }
+
+const { estimateSpeakSeconds, speakFit } = await load('src/utils/speakTime.ts');
+assert.equal(estimateSpeakSeconds(''), 0);
+assert.equal(estimateSpeakSeconds('one two three four five six seven'), 2.5);
+assert.ok(
+  estimateSpeakSeconds('Stop. Read this. Now.') >
+    estimateSpeakSeconds('Stop read this now'),
+  'Sentence breaks add pause time',
+);
+assert.equal(speakFit(3, 5), 'fits');
+assert.equal(speakFit(4.5, 5), 'tight');
+assert.equal(speakFit(5.1, 5), 'over');
+
+const { buildShareUrl, parseSharedHook } = await load('src/utils/shareLink.ts');
+const sharedUrl = new URL(
+  buildShareUrl(
+    {
+      text: 'Pilots don’t panic & here’s why?',
+      framework: 'BOLD CLAIM',
+      platform: 'TikTok',
+    },
+    'https://example.test',
+  ),
+);
+assert.deepEqual(parseSharedHook(sharedUrl.search), {
+  text: 'Pilots don’t panic & here’s why?',
+  framework: 'BOLD CLAIM',
+  platform: 'TikTok',
+});
+assert.equal(parseSharedHook('?h=hi&p=MySpace'), null);
+assert.equal(parseSharedHook('?p=TikTok'), null);
+assert.equal(
+  parseSharedHook(`?h=${'x'.repeat(900)}&p=TikTok`).text.length,
+  400,
+);
+
+const { parseDraft, defaultDraft } = await load('src/utils/draft.ts');
+assert.deepEqual(parseDraft(null), defaultDraft);
+assert.deepEqual(parseDraft('{broken'), defaultDraft);
+assert.deepEqual(
+  parseDraft(
+    JSON.stringify({
+      script: 'keep me',
+      platform: 'TikTok',
+      tone: 'Nope',
+      hookWindow: 8,
+    }),
+  ),
+  { ...defaultDraft, script: 'keep me', platform: 'TikTok', hookWindow: 8 },
+);
+
+const { buildHooksCsv, buildHooksPlainText } = await load(
+  'src/utils/export.ts',
+);
+const exportHook = {
+  framework: 'STAT SHOCK',
+  text: '-50% of pilots never say this',
+  why: 'Numbers stop the scroll.',
+  timecode: '00:00–00:05',
+  scores: { curiosity: 1, clarity: 2, scroll_stop: 3, platform_fit: 4 },
+  best_pick: true,
+  on_screen_text: '=HYPERLINK("x")',
+  visual: 'Cockpit close-up.',
+};
+const exportCsv = buildHooksCsv([exportHook]);
+assert.ok(exportCsv.includes(`"'-50% of pilots never say this"`));
+assert.ok(exportCsv.includes(`"'=HYPERLINK(""x"")"`));
+assert.ok(exportCsv.includes('"Cockpit close-up."'));
+assert.ok(
+  buildHooksPlainText([exportHook]).includes('Visual: Cockpit close-up.'),
+);
+
+const { createGenerateHooksResponse } = await load(
+  'src/server/hookGeneration.ts',
+);
+const frameworks = [
+  'CURIOSITY GAP',
+  'BOLD CLAIM',
+  'PATTERN INTERRUPT',
+  'STORY OPEN',
+  'CONTROVERSY',
+  'STAT SHOCK',
+  'DIRECT CALLOUT',
+  'COLD OPEN',
+  'QUESTION HOOK',
+  'STAKES FIRST',
+];
+const generateBody = {
+  script:
+    "Most passengers panic when they hear about an engine failure. Pilots don't. Modern airliners are designed to fly safely even after losing one engine.",
+  platform: 'Instagram Reels',
+  tone: 'Clean',
+  audience: 'Beginners',
+  intensity: 'Safe',
+  language: 'English',
+  hookWindow: 5,
+  mode: 'generate',
+};
+const modelHooks = (withOverlay) =>
+  frameworks.map((framework, index) => ({
+    framework,
+    text: 'Engine failure mid-flight? Pilots stay calm because airliners fly safely on one engine.',
+    why: 'Uses the engine failure fear from the source to open a gap.',
+    timecode: '00:00–00:05',
+    scores: { curiosity: 80, clarity: 80, scroll_stop: 80, platform_fit: 80 },
+    best_pick: index === 0,
+    ...(withOverlay
+      ? {
+          on_screen_text: '  One engine is enough  ',
+          visual: 'Wing engine through the cabin window.',
+        }
+      : {}),
+  }));
+try {
+  console.warn = console.error = console.info = () => {};
+  globalThis.fetch = async () =>
+    success(JSON.stringify({ hooks: modelHooks(true) }));
+  const withOverlay = await createGenerateHooksResponse({
+    body: generateBody,
+    apiKeys: ['overlay-key'],
+    ip: crypto.randomUUID(),
+  });
+  assert.equal(withOverlay.status, 200);
+  assert.equal(
+    withOverlay.payload.hooks[0].on_screen_text,
+    'One engine is enough',
+  );
+  assert.equal(
+    withOverlay.payload.hooks[0].visual,
+    'Wing engine through the cabin window.',
+  );
+  globalThis.fetch = async () =>
+    success(JSON.stringify({ hooks: modelHooks(false) }));
+  const withoutOverlay = await createGenerateHooksResponse({
+    body: generateBody,
+    apiKeys: ['overlay-key'],
+    ip: crypto.randomUUID(),
+  });
+  assert.equal(
+    withoutOverlay.status,
+    200,
+    'Hooks without overlay fields still succeed',
+  );
+  assert.equal(withoutOverlay.payload.hooks[0].on_screen_text, undefined);
+} finally {
+  globalThis.fetch = originalFetch;
+  Object.assign(console, originalConsole);
+}
+
 console.log(
-  'Saved library, CSV, expansion validation, key rotation, rate limiting and privacy tests passed.',
+  'Saved library, CSV, expansion validation, key rotation, rate limiting, privacy, speak time, share link, draft and first-frame tests passed.',
 );
