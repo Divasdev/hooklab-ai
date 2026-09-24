@@ -11,6 +11,7 @@ import {
 import {
   AllKeysExhaustedError,
   callGeminiWithRotation,
+  quotaExhaustedMessage,
   defaultGeminiModel,
   extractJSON,
   GeminiApiError,
@@ -287,8 +288,7 @@ export const createExpandHookResponse = async ({
       return {
         status: 429,
         payload: {
-          error:
-            'Dont harass, the API limit is over. So please hold on, Hamza.',
+          error: quotaExhaustedMessage,
         },
       };
     }
