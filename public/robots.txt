@@ -1,5 +1,4 @@
 User-agent: *
 Allow: /
 
-# TODO: update when hooklab.ai domain is live
-Sitemap: https://virality-ai.example.com/sitemap.xml
+Sitemap: https://hooklab-ai.vercel.app/sitemap.xml
