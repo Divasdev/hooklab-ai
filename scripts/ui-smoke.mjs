@@ -115,7 +115,7 @@ try {
     });
     await page.goto(baseURL);
     await page
-      .getByRole('textbox', { name: 'Script Slate' })
+      .getByRole('textbox', { name: 'Your script' })
       .fill('I spent a month improving my editing workflow and saved hours.');
     await page
       .getByRole('button', { name: 'Cut 10 Hooks', exact: true })
@@ -123,7 +123,7 @@ try {
     const cards = page
       .locator('article')
       .filter({
-        has: page.getByRole('button', { name: 'Download hook image' }),
+        has: page.getByRole('button', { name: 'More actions' }),
       });
     await cards.first().waitFor();
     const first = cards.first();
@@ -137,21 +137,22 @@ try {
       .nth(1)
       .getByRole('button', { name: 'Save hook', exact: true })
       .click();
-    await first.getByRole('button', { name: 'Copy hook', exact: true }).click();
+    await first.getByRole('button', { name: /^Copy( hook)?$/ }).click();
     assert.match(
       await page.evaluate(() => navigator.clipboard.readText()),
       /Original hook 1/,
     );
     const pngDownload = page.waitForEvent('download');
-    await first.getByRole('button', { name: 'Download hook image' }).click();
+    await first.getByRole('button', { name: 'More actions' }).click();
+    await first.getByRole('button', { name: 'Save as image' }).click();
     const png = await pngDownload;
     const pngPath = join(output, `hook-${width}.png`);
     await png.saveAs(pngPath);
     const bytes = await readFile(pngPath);
     assert.equal(bytes.readUInt32BE(16), 1080);
     assert.ok(bytes.length > 10000, 'Export should contain rendered text');
-    await first.getByRole('button', { name: /Expand into outline/ }).click();
-    await first.getByRole('button', { name: 'Building outline...' }).waitFor();
+    await first.getByRole('button', { name: /Turn into script outline/ }).click();
+    await first.getByRole('button', { name: 'Building outline…' }).waitFor();
     const outlineDialog = page.getByRole('dialog', { name: 'Script outline' });
     await outlineDialog.waitFor();
     await outlineDialog.getByRole('button', { name: 'Copy Outline' }).click();
@@ -162,7 +163,7 @@ try {
     await page.screenshot({ path: join(output, `outline-${width}.png`) });
     await page.keyboard.press('Escape');
     failExpansion = true;
-    await first.getByRole('button', { name: /Expand into outline/ }).click();
+    await first.getByRole('button', { name: /Turn into script outline/ }).click();
     await first.getByText(/hit the rate limit/).waitFor();
     failExpansion = false;
     await page.getByRole('button', { name: /Open saved hooks/ }).click();
