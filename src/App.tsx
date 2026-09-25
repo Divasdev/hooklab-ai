@@ -191,25 +191,35 @@ function App() {
   }, [compareResult, hooks.length, isLoading, successfulResultId]);
 
   useEffect(() => {
-    const timeout = window.setTimeout(
-      () =>
-        writeDraft({
-          script,
-          hookB,
-          platform,
-          tone,
-          audience,
-          intensity,
-          language,
-          hookWindow,
-          mode,
-          niche,
-        }),
-      400,
-    );
+    // Once hooks are cut from the current text, the draft is finished: keep it
+    // on screen, but don't bring it back on the next visit. New edits save again.
+    const isFinished =
+      currentRequest !== null &&
+      script.trim() === currentRequest.script &&
+      hookB.trim() === (currentRequest.hookB ?? hookB.trim());
+    const draft = {
+      script: isFinished ? '' : script,
+      hookB: isFinished ? '' : hookB,
+      platform,
+      tone,
+      audience,
+      intensity,
+      language,
+      hookWindow,
+      mode,
+      niche,
+    };
+
+    if (isFinished) {
+      writeDraft(draft);
+      return;
+    }
+
+    const timeout = window.setTimeout(() => writeDraft(draft), 400);
 
     return () => window.clearTimeout(timeout);
   }, [
+    currentRequest,
     script,
     hookB,
     platform,
@@ -720,7 +730,7 @@ function App() {
                   <span className="hidden md:inline">
                     Ctrl/⌘ + Enter to run ·{' '}
                   </span>
-                  Your draft is saved in this browser
+                  Unfinished drafts are saved in this browser
                 </p>
               </div>
             </form>
